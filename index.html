@@ -1,0 +1,780 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15131e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Brick Arcade">
+<title>Brick Arcade</title>
+<style>
+/* standalone base: what the artifact viewer used to provide */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;overscroll-behavior:none}
+[hidden]{display:none!important}
+</style><style>
+/* Layout: an arcade cabinet with a title screen (two game cards) and one screen per game; single dark look on purpose */
+:root{
+  --bg:#15131e; --panel:#201d2d; --well:#0f0d17; --cell:#1d1a2a; --line:#302b44;
+  --ink:#efeaf7; --muted:#9b93b5; --accent:#ffb547; --veil:rgba(15,13,23,.88);
+  --display:"Bungee","Impact",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-highlight-color:transparent}
+.wrap{max-width:760px;margin:0 auto;padding-block:20px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.screen{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%}
+
+/* logo */
+.logo{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(30px,8vw,52px);letter-spacing:.02em;line-height:1;text-align:center;text-wrap:balance}
+.logo span:nth-child(7n+1){color:#56cfe1}.logo span:nth-child(7n+2){color:#f4cc4a}.logo span:nth-child(7n+3){color:#b47cf2}
+.logo span:nth-child(7n+4){color:#6ccf86}.logo span:nth-child(7n+5){color:#ef6670}.logo span:nth-child(7n+6){color:#5c86f2}
+.logo span:nth-child(7n){color:#f39b4a}
+.logo .gap{display:inline-block;width:.4em}
+.tag{margin:0;color:var(--muted);font-size:14px;text-align:center}
+
+/* menu */
+.menu-head{display:flex;flex-direction:column;gap:10px;padding-block:12px 4px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;width:100%;max-width:640px}
+.card{display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;color:var(--ink);font:inherit;cursor:pointer;transition:transform .15s ease,border-color .15s ease}
+.card:hover{border-color:var(--accent);transform:translateY(-3px)}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.card .art{display:flex;justify-content:center;align-items:center;background:var(--well);border-radius:6px;padding-block:16px;min-height:150px}
+.card canvas{display:block;max-width:100%;height:auto}
+.card h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.02em}
+.card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.card .meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:auto;font-size:12px;color:var(--muted)}
+.card .meta b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.card .play{color:var(--accent);font-weight:600;font-size:14px}
+.menu-foot{color:var(--muted);font-size:12px;margin:0}
+
+/* game screens */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;max-width:640px}
+.back{font:600 14px var(--body);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer}
+.back:hover{border-color:var(--muted)}
+.gname{font-family:var(--display);font-size:18px;letter-spacing:.03em}
+.back:focus-visible,.btn:focus-visible,.pad button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.game{display:grid;grid-template-columns:120px auto 120px;grid-template-areas:"hold well side";gap:16px;align-items:start}
+.hold{grid-area:hold;display:flex;flex-direction:column;gap:12px}
+.well{grid-area:well;position:relative}
+.side{grid-area:side;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mini{display:block;width:100%;height:auto}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--mono);font-weight:500;font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.stat.score b{color:var(--accent)}
+.keys{font-size:12px;color:var(--muted);display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin:0}
+.keys dt{font-family:var(--mono);color:var(--ink);font-size:11px}
+.keys dd{margin:0}
+
+#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;background:var(--well);border:2px solid var(--line);border-radius:4px}
+.overlay{position:absolute;inset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--veil);border-radius:6px;padding:16px}
+.overlay h2{margin:0;font-family:var(--display);font-weight:400;font-size:26px;color:var(--ink)}
+.overlay p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.overlay .big{font-family:var(--mono);font-size:28px;color:var(--accent)}
+.overlay .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.btn{font:600 15px var(--body);color:#1b1608;background:var(--accent);border:0;border-radius:6px;padding:10px 22px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+
+.pad{display:none;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:420px;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad button{font:600 15px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;height:54px;cursor:pointer;touch-action:none}
+.pad button.go{background:var(--accent);color:#1b1608;border-color:transparent}
+.pad button:active{filter:brightness(1.35)}
+
+/* brickpack */
+.pstats{display:flex;gap:28px;justify-content:center;align-items:flex-end}
+.pstats .stat{align-items:center}
+.combo{font-family:var(--display);font-size:15px;color:var(--accent);min-width:7ch;text-align:center}
+.pwell{position:relative}
+#packCv{display:block;width:min(100%,420px,calc((100vh - 190px) * 360 / 510));aspect-ratio:360/510;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.hint{margin:0;color:var(--muted);font-size:12px;text-align:center}
+
+@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} }
+@media (max-width:640px){
+  .game{grid-template-columns:72px auto 72px;gap:8px}
+  .panel{padding:8px}
+  .stat b{font-size:15px}
+  #board{width:min(calc(54vh / 2),calc(100vw - 32px - 160px))}
+  .overlay h2{font-size:20px}
+}
+@media (max-width:560px){ .cards{grid-template-columns:1fr} .card .art{min-height:0} }
+@media (prefers-reduced-motion:reduce){ .card{transition:none} .card:hover{transform:none} }
+</style>
+</head>
+<body>
+
+<main class="wrap">
+
+  <!-- ============ MENU ============ -->
+  <section class="screen" id="scrMenu">
+    <div class="menu-head">
+      <h1 class="logo" aria-label="Brick Arcade"><span>B</span><span>R</span><span>I</span><span>C</span><span>K</span><i class="gap"></i><span>A</span><span>R</span><span>C</span><span>A</span><span>D</span><span>E</span></h1>
+      <p class="tag">플레이할 게임을 고르세요</p>
+    </div>
+    <div class="cards">
+      <button class="card" type="button" id="goFall">
+        <div class="art"><canvas id="artFall" width="140" height="140"></canvas></div>
+        <h2>BRICKFALL</h2>
+        <p>위에서 떨어지는 블록을 돌리고 쌓아 가로줄을 지워요. 10줄마다 빨라져요.</p>
+        <div class="meta"><span>최고 <b id="mBestFall">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goPack">
+        <div class="art"><canvas id="artPack" width="140" height="140"></canvas></div>
+        <h2>BRICKPACK</h2>
+        <p>조각 3개를 8×8 판에 끌어다 놓아 가로·세로 줄을 지워요. 시간 제한은 없어요.</p>
+        <div class="meta"><span>최고 <b id="mBestPack">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+    </div>
+    <p class="menu-foot">키보드: 1 또는 2를 눌러 바로 시작</p>
+  </section>
+
+  <!-- ============ BRICKFALL ============ -->
+  <section class="screen" id="scrFall" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="gname">BRICKFALL</span></div>
+    <div class="game">
+      <div class="hold">
+        <div class="panel"><span class="label">홀드</span><canvas id="holdCv" class="mini" width="96" height="64"></canvas></div>
+        <div class="panel keys-panel">
+          <span class="label">조작</span>
+          <dl class="keys">
+            <dt>← →</dt><dd>이동</dd>
+            <dt>↓</dt><dd>소프트 드롭</dd>
+            <dt>↑ X</dt><dd>회전 ↻</dd>
+            <dt>Z</dt><dd>회전 ↺</dd>
+            <dt>Space</dt><dd>하드 드롭</dd>
+            <dt>C</dt><dd>홀드</dd>
+            <dt>P Esc</dt><dd>일시정지</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="well">
+        <canvas id="board" width="320" height="640" aria-label="Brickfall 게임 보드"></canvas>
+        <div class="overlay" id="overlay">
+          <h2 id="ovTitle">BRICKFALL</h2>
+          <p id="ovText"></p>
+          <div class="big" id="ovScore" hidden></div>
+          <button class="btn" id="ovBtn" type="button">시작</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="panel"><span class="label">다음</span><canvas id="nextCv" class="mini" width="96" height="192"></canvas></div>
+        <div class="panel">
+          <div class="stat score"><span class="label">점수</span><b id="sScore">0</b></div>
+          <div class="stat"><span class="label">줄</span><b id="sLines">0</b></div>
+          <div class="stat"><span class="label">레벨</span><b id="sLevel">1</b></div>
+          <div class="stat"><span class="label">최고</span><b id="sBest">0</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="pad" id="pad">
+      <button type="button" data-act="hold">홀드</button>
+      <button type="button" data-act="ccw" aria-label="반시계 회전">↺</button>
+      <button type="button" data-act="cw" aria-label="시계 회전">↻</button>
+      <button type="button" data-act="pause" aria-label="일시정지">Ⅱ</button>
+      <button type="button" data-act="left" aria-label="왼쪽">←</button>
+      <button type="button" data-act="down" aria-label="아래">↓</button>
+      <button type="button" data-act="right" aria-label="오른쪽">→</button>
+      <button type="button" data-act="drop" class="go">드롭</button>
+    </div>
+  </section>
+
+  <!-- ============ BRICKPACK ============ -->
+  <section class="screen" id="scrPack" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="gname">BRICKPACK</span></div>
+    <div class="pstats">
+      <div class="stat score"><span class="label">점수</span><b id="pScore">0</b></div>
+      <div class="combo" id="pCombo" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="pBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="packCv" width="360" height="510" aria-label="Brickpack 게임 보드"></canvas>
+      <div class="overlay" id="pOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="pOvText">더 이상 놓을 자리가 없어요.</p>
+        <div class="big" id="pOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="pRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">아래 조각을 끌어서 판 위에 놓으세요. 놓을 수 없는 조각은 흐리게 보여요.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+// ================= shared =================
+const $ = id => document.getElementById(id);
+const COLORS = { I:'#56cfe1', O:'#f4cc4a', T:'#b47cf2', S:'#6ccf86', Z:'#ef6670', J:'#5c86f2', L:'#f39b4a' };
+const PALETTE = Object.values(COLORS);
+const css = getComputedStyle(document.documentElement);
+const tok = (n, d) => css.getPropertyValue(n).trim() || d;
+const WELL = tok('--well', '#0f0d17'), GRID = tok('--line', '#302b44'), EMPTY = tok('--cell', '#1d1a2a');
+const fmt = n => n.toLocaleString('ko-KR');
+const load = k => { try { return parseInt(localStorage.getItem(k) || '0', 10) || 0; } catch (e) { return 0; } };
+const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+
+function setupHiDPI(c, w, h, x) {
+  const d = Math.min(window.devicePixelRatio || 1, 3);
+  c.width = w * d; c.height = h * d; x.setTransform(d, 0, 0, d, 0, 0);
+}
+function block(c, x, y, s, color, alpha = 1) {
+  if (s <= 0) return;
+  c.globalAlpha = alpha;
+  c.fillStyle = color; c.fillRect(x + 1, y + 1, s - 2, s - 2);
+  const e = Math.max(2, s * .15);
+  c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
+  c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  c.globalAlpha = 1;
+}
+function rrect(c, x, y, w, h, r) {
+  c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); c.fill();
+}
+
+// ================= navigation =================
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack') };
+let current = 'menu';
+function show(name, fromHash) {
+  if (!screens[name]) name = 'menu';
+  if (current === 'fall' && name !== 'fall' && S.mode === 'play') togglePause();
+  for (const k in screens) screens[k].hidden = k !== name;
+  current = name;
+  if (name === 'menu') refreshMenu();
+  if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
+  window.scrollTo(0, 0);
+}
+addEventListener('hashchange', () => show(location.hash.slice(1), true));
+document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => show(b.dataset.nav)));
+$('goFall').addEventListener('click', () => show('fall'));
+$('goPack').addEventListener('click', () => show('pack'));
+
+function refreshMenu() {
+  $('mBestFall').textContent = fmt(best);
+  $('mBestPack').textContent = fmt(pBest);
+}
+function drawArt(id, rows, cell) {
+  const c = $(id), x = c.getContext('2d');
+  setupHiDPI(c, 140, 140, x);
+  const w = rows[0].length * cell, h = rows.length * cell, ox = (140 - w) / 2, oy = (140 - h) / 2;
+  rows.forEach((row, r) => [...row].forEach((ch, cc) => {
+    const px = ox + cc * cell, py = oy + r * cell;
+    if (ch === '.') { x.fillStyle = EMPTY; x.fillRect(px + 1, py + 1, cell - 2, cell - 2); }
+    else block(x, px, py, cell, COLORS[ch]);
+  }));
+}
+drawArt('artFall', [
+  '....T.....', '...TTT....', '..........', '..........', '..........',
+  'I.........', 'I.......OO', 'I.LL..SSOO', 'ILLZZSS.JJ', 'IL.ZZJJJ.J'
+], 13);
+drawArt('artPack', [
+  '........', '..OO....', '..OO.TTT', 'S.....T.', 'SS......', '.S..LLL.', 'IIIIL...', 'JJJ.ZZ..'
+], 16);
+
+// ================= BRICKFALL =================
+const COLS = 10, ROWS = 20, CELL = 32;
+const SHAPES = {
+  I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  J: [[1,0,0],[1,1,1],[0,0,0]],
+  L: [[0,0,1],[1,1,1],[0,0,0]],
+  O: [[1,1],[1,1]],
+  S: [[0,1,1],[1,1,0],[0,0,0]],
+  T: [[0,1,0],[1,1,1],[0,0,0]],
+  Z: [[1,1,0],[0,1,1],[0,0,0]],
+};
+const KICKS = [[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,-1],[1,-1]];
+const LINE_PTS = [0,100,300,500,800];
+const DAS = 160, ARR = 45, SOFT = 40, LOCK = 500, CLEAR_MS = 240;
+
+const cv = $('board'), ctx = cv.getContext('2d');
+const holdCv = $('holdCv'), hctx = holdCv.getContext('2d');
+const nextCv = $('nextCv'), nctx = nextCv.getContext('2d');
+setupHiDPI(cv, COLS*CELL, ROWS*CELL, ctx);
+setupHiDPI(holdCv, 96, 64, hctx);
+setupHiDPI(nextCv, 96, 192, nctx);
+
+let best = load('brickfall-best');
+let S;
+function fresh() {
+  return { board: Array.from({length: ROWS}, () => Array(COLS).fill(null)),
+    queue: [], cur: null, hold: null, canHold: true, score: 0, lines: 0, level: 1,
+    mode: 'ready', dropAcc: 0, lockT: 0, lockResets: 0, clearing: null, clearT: 0 };
+}
+const rotM = (m, dir) => {
+  const n = m.length, out = m.map(r => r.slice());
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
+    if (dir > 0) out[c][n-1-r] = m[r][c]; else out[n-1-c][r] = m[r][c];
+  return out;
+};
+function collide(m, x, y) {
+  for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++) {
+    if (!m[r][c]) continue;
+    const nx = x + c, ny = y + r;
+    if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+    if (ny >= 0 && S.board[ny][nx]) return true;
+  }
+  return false;
+}
+function refill() {
+  const b = Object.keys(SHAPES);
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  S.queue.push(...b);
+}
+function nextType() { while (S.queue.length < 8) refill(); return S.queue.shift(); }
+function spawn(type) {
+  const m = SHAPES[type].map(r => r.slice());
+  S.cur = { type, m, x: Math.floor((COLS - m.length) / 2), y: type === 'I' ? -1 : 0 };
+  S.lockT = 0; S.lockResets = 0; S.dropAcc = 0;
+  if (collide(S.cur.m, S.cur.x, S.cur.y)) gameOver();
+}
+const grounded = () => S.cur && collide(S.cur.m, S.cur.x, S.cur.y + 1);
+function touched() { if (grounded() && S.lockResets < 15) { S.lockT = 0; S.lockResets++; } }
+function move(dx) {
+  if (!S.cur || collide(S.cur.m, S.cur.x + dx, S.cur.y)) return false;
+  S.cur.x += dx; touched(); return true;
+}
+function rotate(dir) {
+  if (!S.cur || S.cur.type === 'O') return;
+  const m = rotM(S.cur.m, dir);
+  for (const [kx, ky] of KICKS) {
+    if (!collide(m, S.cur.x + kx, S.cur.y + ky)) { S.cur.m = m; S.cur.x += kx; S.cur.y += ky; touched(); return; }
+  }
+}
+function softDrop() {
+  if (!S.cur) return;
+  if (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) { S.cur.y++; S.score += 1; S.dropAcc = 0; }
+}
+function hardDrop() {
+  if (!S.cur) return;
+  let d = 0;
+  while (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) { S.cur.y++; d++; }
+  S.score += d * 2; lock();
+}
+function holdPiece() {
+  if (!S.cur || !S.canHold) return;
+  const t = S.cur.type;
+  if (S.hold) { const h = S.hold; S.hold = t; spawn(h); } else { S.hold = t; spawn(nextType()); }
+  S.canHold = false;
+}
+function lock() {
+  const { m, x, y, type } = S.cur;
+  let above = false;
+  for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++) {
+    if (!m[r][c]) continue;
+    if (y + r < 0) { above = true; continue; }
+    S.board[y + r][x + c] = type;
+  }
+  S.cur = null;
+  if (above) { gameOver(); return; }
+  const full = [];
+  for (let r = 0; r < ROWS; r++) if (S.board[r].every(Boolean)) full.push(r);
+  if (full.length) { S.clearing = full; S.clearT = 0; }
+  else { spawn(nextType()); S.canHold = true; }
+}
+function finishClear() {
+  const n = S.clearing.length;
+  S.board = S.board.filter((_, r) => !S.clearing.includes(r));
+  while (S.board.length < ROWS) S.board.unshift(Array(COLS).fill(null));
+  S.score += LINE_PTS[n] * S.level;
+  S.lines += n;
+  S.level = Math.floor(S.lines / 10) + 1;
+  S.clearing = null;
+  spawn(nextType()); S.canHold = true;
+}
+const gravityMs = lv => Math.max(8, Math.pow(Math.max(0.8 - (lv - 1) * 0.007, 0.05), lv - 1) * 1000);
+
+function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); }
+function gameOver() {
+  S.mode = 'over'; S.cur = null;
+  if (S.score > best) { best = S.score; save('brickfall-best', best); }
+  showOverlay();
+}
+function togglePause() {
+  if (S.mode === 'play') S.mode = 'pause';
+  else if (S.mode === 'pause') S.mode = 'play';
+  releaseAll(); showOverlay();
+}
+
+const ov = $('overlay'), ovTitle = $('ovTitle'), ovText = $('ovText'), ovScore = $('ovScore'), ovBtn = $('ovBtn');
+function showOverlay() {
+  if (S.mode === 'play') { ov.hidden = true; return; }
+  ov.hidden = false; ovScore.hidden = true;
+  if (S.mode === 'ready') {
+    ovTitle.textContent = 'BRICKFALL';
+    ovText.innerHTML = '줄을 채우면 사라집니다.<br>10줄마다 레벨이 오르고 빨라집니다.';
+    ovBtn.textContent = '시작';
+  } else if (S.mode === 'pause') {
+    ovTitle.textContent = '일시정지';
+    ovText.textContent = 'P 또는 Esc로 계속합니다.';
+    ovBtn.textContent = '계속';
+  } else {
+    ovTitle.textContent = '게임 오버';
+    ovText.textContent = S.score >= best && S.score > 0 ? '새 최고 기록입니다.' : `레벨 ${S.level} · ${S.lines}줄`;
+    ovScore.hidden = false; ovScore.textContent = fmt(S.score);
+    ovBtn.textContent = '다시 시작';
+  }
+}
+ovBtn.addEventListener('click', () => { if (S.mode === 'pause') togglePause(); else start(); });
+
+const shown = {};
+function setText(id, v) { if (shown[id] !== v) { shown[id] = v; $(id).textContent = typeof v === 'number' ? fmt(v) : v; } }
+function updateStats() {
+  setText('sScore', S.score); setText('sLines', S.lines); setText('sLevel', S.level); setText('sBest', Math.max(best, S.score));
+}
+
+const held = { left: false, right: false, down: false };
+let dasDir = 0, dasT = 0, arrT = 0, softT = 0;
+function releaseAll() { held.left = held.right = held.down = false; dasDir = 0; }
+function press(act) {
+  if (S.mode === 'ready' || S.mode === 'over') { if (act === 'drop' || act === 'start') start(); return; }
+  if (act === 'pause') { togglePause(); return; }
+  if (S.mode !== 'play' || !S.cur) {
+    if (act === 'left' || act === 'right' || act === 'down') held[act] = true;
+    if (act === 'left' || act === 'right') { dasDir = act === 'left' ? -1 : 1; dasT = arrT = 0; }
+    return;
+  }
+  switch (act) {
+    case 'left': case 'right':
+      held[act] = true; dasDir = act === 'left' ? -1 : 1; dasT = arrT = 0; move(dasDir); break;
+    case 'down': held.down = true; softT = 0; softDrop(); break;
+    case 'cw': rotate(1); break;
+    case 'ccw': rotate(-1); break;
+    case 'drop': hardDrop(); break;
+    case 'hold': holdPiece(); break;
+  }
+}
+function release(act) {
+  if (act === 'left' || act === 'right') {
+    held[act] = false;
+    const want = held.left ? -1 : held.right ? 1 : 0;
+    if (want !== dasDir) { dasDir = want; dasT = arrT = 0; }
+  } else if (act === 'down') held.down = false;
+}
+const KEYMAP = { ArrowLeft:'left', ArrowRight:'right', ArrowDown:'down', ArrowUp:'cw', KeyX:'cw', KeyZ:'ccw',
+  Space:'drop', KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold', KeyP:'pause', Escape:'pause', Enter:'start' };
+addEventListener('keydown', e => {
+  if (current === 'menu') {
+    if (e.key === '1') show('fall'); else if (e.key === '2') show('pack');
+    return;
+  }
+  if (current !== 'fall') return;
+  const act = KEYMAP[e.code]; if (!act) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (act === 'start') { if (S.mode === 'pause') togglePause(); else if (S.mode !== 'play') start(); return; }
+  press(act);
+});
+addEventListener('keyup', e => { if (current !== 'fall') return; const act = KEYMAP[e.code]; if (act) release(act); });
+addEventListener('blur', () => { releaseAll(); if (current === 'fall' && S.mode === 'play') togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'fall' && S.mode === 'play') togglePause(); });
+
+document.querySelectorAll('#pad button').forEach(b => {
+  const act = b.dataset.act;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {} press(act); });
+  const up = () => release(act);
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+function updateFall(dt) {
+  if (S.mode !== 'play') return;
+  if (S.clearing) { S.clearT += dt; if (S.clearT >= CLEAR_MS) finishClear(); return; }
+  if (!S.cur) return;
+  if (dasDir) {
+    dasT += dt;
+    if (dasT >= DAS) { arrT += dt; while (arrT >= ARR) { arrT -= ARR; if (!move(dasDir)) { arrT = 0; break; } } }
+  }
+  if (held.down) { softT += dt; while (softT >= SOFT && S.cur) { softT -= SOFT; softDrop(); } }
+  const g = gravityMs(S.level);
+  S.dropAcc += dt;
+  while (S.dropAcc >= g && S.cur) {
+    S.dropAcc -= g;
+    if (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) S.cur.y++; else { S.dropAcc = 0; break; }
+  }
+  if (S.cur && grounded()) { S.lockT += dt; if (S.lockT >= LOCK) lock(); }
+  else S.lockT = 0;
+}
+function drawFall() {
+  const W = COLS * CELL, H = ROWS * CELL;
+  ctx.fillStyle = WELL; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = GRID; ctx.lineWidth = 1; ctx.globalAlpha = .45;
+  ctx.beginPath();
+  for (let c = 1; c < COLS; c++) { ctx.moveTo(c * CELL + .5, 0); ctx.lineTo(c * CELL + .5, H); }
+  for (let r = 1; r < ROWS; r++) { ctx.moveTo(0, r * CELL + .5); ctx.lineTo(W, r * CELL + .5); }
+  ctx.stroke(); ctx.globalAlpha = 1;
+  const flash = S.clearing ? (Math.floor(S.clearT / 60) % 2 === 0) : false;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const t = S.board[r][c]; if (!t) continue;
+    block(ctx, c * CELL, r * CELL, CELL, (S.clearing && S.clearing.includes(r) && flash) ? '#ffffff' : COLORS[t]);
+  }
+  if (S.cur && S.mode !== 'over') {
+    const { m, x, type } = S.cur; let gy = S.cur.y;
+    while (!collide(m, x, gy + 1)) gy++;
+    ctx.strokeStyle = COLORS[type]; ctx.lineWidth = 2; ctx.globalAlpha = .55;
+    for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++)
+      if (m[r][c] && gy + r >= 0) ctx.strokeRect((x + c) * CELL + 3, (gy + r) * CELL + 3, CELL - 6, CELL - 6);
+    ctx.globalAlpha = 1;
+    const fade = S.lockT > 0 ? 1 - (S.lockT / LOCK) * .35 : 1;
+    for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++)
+      if (m[r][c] && S.cur.y + r >= 0) block(ctx, (x + c) * CELL, (S.cur.y + r) * CELL, CELL, COLORS[type], fade);
+  }
+  hctx.clearRect(0, 0, 96, 64);
+  if (S.hold) drawMini(hctx, S.hold, 48, 32, 20, S.canHold ? 1 : .35);
+  nctx.clearRect(0, 0, 96, 192);
+  while (S.queue.length < 3) refill();
+  for (let i = 0; i < 3; i++) drawMini(nctx, S.queue[i], 48, 32 + i * 64, i === 0 ? 20 : 16, i === 0 ? 1 : .7);
+  updateStats();
+}
+function drawMini(c, type, cx, cy, s, alpha = 1) {
+  const m = SHAPES[type]; let r0 = 9, r1 = -1, c0 = 9, c1 = -1;
+  m.forEach((row, r) => row.forEach((v, cc) => { if (v) { r0 = Math.min(r0, r); r1 = Math.max(r1, r); c0 = Math.min(c0, cc); c1 = Math.max(c1, cc); } }));
+  const w = (c1 - c0 + 1) * s, h = (r1 - r0 + 1) * s, ox = cx - w / 2, oy = cy - h / 2;
+  for (let r = r0; r <= r1; r++) for (let cc = c0; cc <= c1; cc++)
+    if (m[r][cc]) block(c, ox + (cc - c0) * s, oy + (r - r0) * s, s, COLORS[type], alpha);
+}
+
+// ================= BRICKPACK =================
+const PB = 8, PC = 40, BX = 20, BY = 20, PW = 360, PH = 510, TRAY_Y = 372, SLOT = 120;
+const pcv = $('packCv'), pctx = pcv.getContext('2d');
+setupHiDPI(pcv, PW, PH, pctx);
+const PACK_SHAPES = [
+  [['#'],1], [['##'],2], [['#','#'],2], [['###'],2], [['#','#','#'],2],
+  [['####'],2], [['#','#','#','#'],2], [['#####'],1], [['#','#','#','#','#'],1],
+  [['##','##'],3], [['###','###','###'],1], [['###','###'],1], [['##','##','##'],1],
+  [['##','#.'],2], [['##','.#'],2], [['#.','##'],2], [['.#','##'],2],
+  [['###','#..'],1], [['###','..#'],1], [['#..','###'],1], [['..#','###'],1],
+  [['##','#.','#.'],1], [['##','.#','.#'],1], [['#.','#.','##'],1], [['.#','.#','##'],1],
+  [['###','.#.'],1], [['.#.','###'],1], [['#.','##','#.'],1], [['.#','##','.#'],1],
+  [['##.','.##'],1], [['.##','##.'],1], [['#.','##','.#'],1], [['.#','##','#.'],1],
+  [['###','#..','#..'],1], [['###','..#','..#'],1], [['#..','#..','###'],1], [['..#','..#','###'],1],
+];
+const PIECES = PACK_SHAPES.map(([rows, weight]) => {
+  const cells = [];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') cells.push([y, x]); }));
+  return { cells, h: rows.length, w: Math.max(...rows.map(r => r.length)), weight };
+});
+const TOTAL_W = PIECES.reduce((a, p) => a + p.weight, 0);
+
+let pBest = load('brickpack-best');
+let P, drag = null;
+function packFresh() {
+  const p = { grid: Array.from({length: PB}, () => Array(PB).fill(null)), tray: [null, null, null],
+    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [] };
+  return p;
+}
+function randPiece() {
+  let k = Math.random() * TOTAL_W, pick = PIECES[0];
+  for (const p of PIECES) { k -= p.weight; if (k < 0) { pick = p; break; } }
+  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(Math.random() * PALETTE.length)] };
+}
+function fitsAt(p, r, c) {
+  for (const [dy, dx] of p.cells) {
+    const rr = r + dy, cc = c + dx;
+    if (rr < 0 || cc < 0 || rr >= PB || cc >= PB || P.grid[rr][cc]) return false;
+  }
+  return true;
+}
+function fitsAny(p) {
+  for (let r = 0; r <= PB - p.h; r++) for (let c = 0; c <= PB - p.w; c++) if (fitsAt(p, r, c)) return true;
+  return false;
+}
+function deal() {
+  for (let t = 0; t < 40; t++) {
+    const set = [randPiece(), randPiece(), randPiece()];
+    if (set.some(fitsAny) || t === 39) { P.tray = set; return; }
+  }
+}
+function packStart() {
+  P = packFresh(); drag = null; deal();
+  $('pOverlay').hidden = true; updatePackStats();
+}
+function packOver() {
+  P.mode = 'over';
+  if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
+  else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
+  $('pOvScore').textContent = fmt(P.score);
+  updatePackStats();
+  setTimeout(() => { if (P.mode === 'over') $('pOverlay').hidden = false; }, 550);
+}
+$('pRestart').addEventListener('click', packStart);
+
+function place(i, r, c) {
+  const p = P.tray[i], now = performance.now();
+  for (const [dy, dx] of p.cells) P.grid[r + dy][c + dx] = p.color;
+  P.tray[i] = null;
+  let gain = p.cells.length;
+
+  const rows = [], cols = [];
+  for (let y = 0; y < PB; y++) if (P.grid[y].every(Boolean)) rows.push(y);
+  for (let x = 0; x < PB; x++) if (P.grid.every(row => row[x])) cols.push(x);
+  const n = rows.length + cols.length;
+  const cx = BX + (c + p.w / 2) * PC, cy = BY + (r + p.h / 2) * PC;
+
+  if (n) {
+    P.combo = (P.combo > 0 && P.sinceClear <= 3) ? P.combo + 1 : 1;
+    P.sinceClear = 0;
+    const lineGain = (n * (n + 1) / 2) * 10 * P.combo;
+    gain += lineGain;
+    const seen = new Set();
+    const clearCell = (y, x) => {
+      const k = y * PB + x; if (seen.has(k)) return; seen.add(k);
+      P.fx.push({ x, y, color: P.grid[y][x], t: now + (rows.includes(y) ? x : y) * 18 });
+    };
+    rows.forEach(y => { for (let x = 0; x < PB; x++) clearCell(y, x); });
+    cols.forEach(x => { for (let y = 0; y < PB; y++) clearCell(y, x); });
+    seen.forEach(k => { P.grid[Math.floor(k / PB)][k % PB] = null; });
+    let label = n > 1 ? `${n}줄! +${fmt(lineGain)}` : `+${fmt(lineGain)}`;
+    P.texts.push({ text: label, x: cx, y: cy, t: now, color: '#ffffff' });
+    if (P.combo >= 2) P.texts.push({ text: `콤보 ×${P.combo}`, x: cx, y: cy + 30, t: now + 120, color: tok('--accent', '#ffb547') });
+    if (P.grid.every(row => row.every(v => !v))) {
+      gain += 300;
+      P.texts.push({ text: '판 비우기 +300', x: PW / 2, y: BY + PB * PC / 2, t: now + 250, color: '#6ccf86' });
+    }
+  } else {
+    P.sinceClear++;
+    if (P.sinceClear > 3) P.combo = 0;
+  }
+  P.score += gain;
+  if (P.tray.every(t => !t)) deal();
+  updatePackStats();
+  if (!P.tray.some(t => t && fitsAny(t))) packOver();
+}
+function updatePackStats() {
+  setText('pScore', P.score);
+  setText('pBest', Math.max(pBest, P.score));
+  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : '');
+}
+
+// dragging
+function toLocal(e) {
+  const r = pcv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * PW / r.width, y: (e.clientY - r.top) * PH / r.height };
+}
+function snapFor(d) {
+  const p = P.tray[d.i];
+  const tlx = d.x - p.w * PC / 2, tly = d.y - d.lift - p.h * PC / 2;
+  const c = Math.round((tlx - BX) / PC), r = Math.round((tly - BY) / PC);
+  return { r, c, ok: fitsAt(p, r, c) };
+}
+pcv.addEventListener('pointerdown', e => {
+  if (!P || P.mode !== 'play' || drag) return;
+  const pt = toLocal(e);
+  if (pt.y < TRAY_Y - 10) return;
+  const i = Math.min(2, Math.max(0, Math.floor(pt.x / SLOT)));
+  if (!P.tray[i]) return;
+  e.preventDefault();
+  try { pcv.setPointerCapture(e.pointerId); } catch (_) {}
+  drag = { i, x: pt.x, y: pt.y, lift: e.pointerType === 'mouse' ? 0 : 80, id: e.pointerId };
+  drag.snap = snapFor(drag);
+  pcv.style.cursor = 'grabbing';
+});
+pcv.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const pt = toLocal(e); drag.x = pt.x; drag.y = pt.y; drag.snap = snapFor(drag);
+});
+function endDrag(e, cancel) {
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag; drag = null; pcv.style.cursor = '';
+  if (!cancel && d.snap && d.snap.ok && P.mode === 'play') place(d.i, d.snap.r, d.snap.c);
+}
+pcv.addEventListener('pointerup', e => endDrag(e, false));
+pcv.addEventListener('pointercancel', e => endDrag(e, true));
+pcv.addEventListener('contextmenu', e => e.preventDefault());
+
+function drawPack(now) {
+  const c = pctx;
+  c.clearRect(0, 0, PW, PH);
+  c.fillStyle = WELL; rrect(c, BX - 8, BY - 8, PB * PC + 16, PB * PC + 16, 10);
+
+  let prev = null, hlColor = null;
+  const hlRows = new Set(), hlCols = new Set();
+  if (drag && drag.snap && drag.snap.ok) {
+    prev = drag.snap; const p = P.tray[drag.i]; hlColor = p.color;
+    const mine = new Set(p.cells.map(([dy, dx]) => (prev.r + dy) * PB + prev.c + dx));
+    const occ = (y, x) => P.grid[y][x] || mine.has(y * PB + x);
+    for (let y = 0; y < PB; y++) { let f = true; for (let x = 0; x < PB; x++) if (!occ(y, x)) { f = false; break; } if (f) hlRows.add(y); }
+    for (let x = 0; x < PB; x++) { let f = true; for (let y = 0; y < PB; y++) if (!occ(y, x)) { f = false; break; } if (f) hlCols.add(x); }
+  }
+  for (let y = 0; y < PB; y++) for (let x = 0; x < PB; x++) {
+    const px = BX + x * PC, py = BY + y * PC, v = P.grid[y][x];
+    if (v) block(c, px, py, PC, (hlRows.has(y) || hlCols.has(x)) ? hlColor : v);
+    else { c.fillStyle = EMPTY; rrect(c, px + 2, py + 2, PC - 4, PC - 4, 5); }
+  }
+  if (prev) {
+    const p = P.tray[drag.i];
+    for (const [dy, dx] of p.cells) block(c, BX + (prev.c + dx) * PC, BY + (prev.r + dy) * PC, PC, p.color, .45);
+  }
+  // clear effects
+  P.fx = P.fx.filter(f => now - f.t < 340);
+  for (const f of P.fx) {
+    const k = Math.max(0, (now - f.t) / 340), s = PC * (1 - k);
+    block(c, BX + f.x * PC + (PC - s) / 2, BY + f.y * PC + (PC - s) / 2, s, k < .15 ? '#ffffff' : f.color, 1 - k * .8);
+  }
+  // tray
+  for (let i = 0; i < 3; i++) {
+    const p = P.tray[i];
+    if (!p || (drag && drag.i === i)) continue;
+    const s = Math.min(24, Math.floor(104 / Math.max(p.w, p.h)));
+    const ox = i * SLOT + SLOT / 2 - p.w * s / 2, oy = TRAY_Y + 64 - p.h * s / 2;
+    const a = (P.mode === 'play' && fitsAny(p)) ? 1 : .28;
+    for (const [dy, dx] of p.cells) block(c, ox + dx * s, oy + dy * s, s, p.color, a);
+  }
+  // dragged piece
+  if (drag) {
+    const p = P.tray[drag.i];
+    const tlx = drag.x - p.w * PC / 2, tly = drag.y - drag.lift - p.h * PC / 2;
+    for (const [dy, dx] of p.cells) block(c, tlx + dx * PC, tly + dy * PC, PC, p.color, .92);
+  }
+  // floating text
+  P.texts = P.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '22px Bungee, Impact, sans-serif';
+  for (const t of P.texts) {
+    const k = (now - t.t) / 900; if (k < 0) continue;
+    c.globalAlpha = 1 - k * k;
+    const y = t.y - 36 * k;
+    c.lineWidth = 5; c.strokeStyle = WELL; c.strokeText(t.text, t.x, y);
+    c.fillStyle = t.color; c.fillText(t.text, t.x, y);
+  }
+  c.globalAlpha = 1;
+}
+
+// ================= loop & boot =================
+let last = 0;
+function frame(t) {
+  const dt = Math.min(t - (last || t), 100); last = t;
+  if (current === 'fall') { updateFall(dt); drawFall(); }
+  else if (current === 'pack') drawPack(t);
+  requestAnimationFrame(frame);
+}
+function boot(data) {
+  S = fresh();
+  if (data && data.S && data.S.board) { Object.assign(S, data.S); if (S.mode === 'play') S.mode = 'pause'; }
+  if (data && data.P && data.P.grid) { P = Object.assign(packFresh(), data.P, { fx: [], texts: [] }); updatePackStats(); if (P.mode === 'over') packOver(); }
+  else packStart();
+  showOverlay();
+  show(location.hash.slice(1) || 'menu', true);
+  requestAnimationFrame(frame);
+}
+const hot = window.claude && window.claude.hot;
+if (hot && typeof hot.snapshot === 'function') { try { hot.snapshot(() => ({ S, P })); } catch (e) {} }
+if (hot && typeof hot.ready === 'function') hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
