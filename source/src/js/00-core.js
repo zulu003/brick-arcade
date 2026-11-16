@@ -23,6 +23,18 @@ function rngNext(o) {
   return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 }
 
+// game modes: four games offer a stage mode next to the endless one (picked from the menu)
+const GM = { fall: 'endless', pack: 'endless', brk: 'endless', pop: 'endless' };
+const STAGE_KEY = { fall: 'brickfall', pack: 'brickpack', brk: 'brickbreak', pop: 'brickpop' };
+// stage-mode records: best score and furthest stage reached
+const stageRec = g => ({ best: load(STAGE_KEY[g] + '-stage-best'), max: load(STAGE_KEY[g] + '-stage-max') });
+function stageRecSave(g, score, stage) {
+  const r = stageRec(g), rec = score > r.best;
+  if (rec) save(STAGE_KEY[g] + '-stage-best', score);
+  if (stage > r.max) save(STAGE_KEY[g] + '-stage-max', stage);
+  return rec;
+}
+
 // colour-blind help: a small shape on each block colour (Settings → 블록 무늬)
 let MARKS = false;
 const MARK_OF = { '#ef6670': 'circle', '#f4cc4a': 'tri', '#5c86f2': 'square', '#6ccf86': 'diamond', '#b47cf2': 'plus', '#56cfe1': 'ring', '#f39b4a': 'x' };
@@ -82,19 +94,22 @@ function show(name, fromHash) {
 }
 addEventListener('hashchange', () => show(location.hash.slice(1), true));
 document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => show(b.dataset.nav)));
-$('goFall').addEventListener('click', () => show('fall'));
-$('goPack').addEventListener('click', () => show('pack'));
-$('goBrk').addEventListener('click', () => show('brk'));
-$('goStk').addEventListener('click', () => show('stk'));
-$('goPop').addEventListener('click', () => show('pop'));
-$('goSld').addEventListener('click', () => show('sld'));
+// games with two modes ask which one first; the others open straight away
+function goGame(g) { if (GM[g]) openModePicker(g); else show(g); }
+$('goFall').addEventListener('click', () => goGame('fall'));
+$('goPack').addEventListener('click', () => goGame('pack'));
+$('goBrk').addEventListener('click', () => goGame('brk'));
+$('goStk').addEventListener('click', () => goGame('stk'));
+$('goPop').addEventListener('click', () => goGame('pop'));
+$('goSld').addEventListener('click', () => goGame('sld'));
 
 function refreshMenu() {
-  $('mBestFall').textContent = fmt(best);
-  $('mBestPack').textContent = fmt(pBest);
-  $('mBestBrk').textContent = fmt(bBest);
+  const withStage = (v, g) => { const m = stageRec(g).max; return fmt(v) + (m ? ` · 스테이지 ${m}` : ''); };
+  $('mBestFall').textContent = withStage(best, 'fall');
+  $('mBestPack').textContent = withStage(pBest, 'pack');
+  $('mBestBrk').textContent = withStage(bBest, 'brk');
   $('mBestStk').textContent = fmt(tBest);
-  $('mBestPop').textContent = fmt(oBest);
+  $('mBestPop').textContent = withStage(oBest, 'pop');
   $('mBestSld').textContent = fmt(lBest);
 }
 function drawArt(id, rows, cell) {

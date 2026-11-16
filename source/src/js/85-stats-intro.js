@@ -1,10 +1,14 @@
 // ================= stats, record transfer, daily results, how-to-play =================
 const GAMES = [
   { id: 'fall', name: 'BRICKFALL', best: () => best, unit: '' },
+  { id: 'fall-stage', name: 'BRICKFALL · 스테이지', best: () => stageRec('fall').best, stage: 'fall', unit: '' },
   { id: 'pack', name: 'BRICKPACK', best: () => pBest, unit: '' },
+  { id: 'pack-stage', name: 'BRICKPACK · 스테이지', best: () => stageRec('pack').best, stage: 'pack', unit: '' },
   { id: 'brk', name: 'BRICKBREAK', best: () => bBest, unit: '' },
+  { id: 'brk-stage', name: 'BRICKBREAK · 스테이지', best: () => stageRec('brk').best, stage: 'brk', unit: '' },
   { id: 'stk', name: 'BRICKSTACK', best: () => tBest, unit: '층' },
   { id: 'pop', name: 'BRICKPOP', best: () => oBest, unit: '' },
+  { id: 'pop-stage', name: 'BRICKPOP · 스테이지', best: () => stageRec('pop').best, stage: 'pop', unit: '' },
   { id: 'sld', name: 'BRICKSLIDE', best: () => lBest, unit: '' },
 ];
 const STATS_KEY = 'brick-stats';
@@ -50,8 +54,9 @@ function renderStats() {
       card.append(bars);
     }
     const foot = document.createElement('div'); foot.className = 'st-foot';
-    foot.textContent = !g.n ? '아직 끝낸 판이 없어요.'
-      : `최근 ${recent.length}판` + (g.hiAt && g.hi >= bestScore ? ` · 최고 기록 ${g.hiAt.replace(/-/g, '.')}` : '');
+    const reach = gm.stage && stageRec(gm.stage).max ? ` · 최고 스테이지 ${stageRec(gm.stage).max}` : '';
+    foot.textContent = (!g.n ? '아직 끝낸 판이 없어요.'
+      : `최근 ${recent.length}판` + (g.hiAt && g.hi >= bestScore ? ` · 최고 기록 ${g.hiAt.replace(/-/g, '.')}` : '')) + reach;
     card.append(foot);
     list.append(card);
   }
@@ -124,16 +129,65 @@ function pauseCurrent() {
   if (current === 'stk') stkPause();
 }
 function openIntro(id, btn) {
-  const lines = INTRO[id]; if (!lines) return;
+  let lines = INTRO[id]; if (!lines) return;
   pauseCurrent();
   introOpener = btn || null;
   $('introTitle').textContent = (GAMES.find(g => g.id === id) || {}).name || '';
+  if (MODE_INFO[id]) lines = [...lines, `스테이지: ${MODE_INFO[id].stage}`, `무한: ${MODE_INFO[id].endless}`];
   const ul = $('introList'); ul.textContent = '';
   for (const l of lines) { const li = document.createElement('li'); li.textContent = l; ul.append(li); }
   intro.hidden = false; $('introGo').focus();
   const seen = loadJSON(INTRO_KEY) || [];
   if (!seen.includes(id)) saveJSON(INTRO_KEY, [...seen, id]);
 }
+// ---- mode picker: stage or endless, for the games that have both
+const MODE_INFO = {
+  fall: { stage: `한 스테이지에 10줄을 지우면 통과. 아래에 깔린 회색 줄이 점점 늘고 빨라져요.`, endless: '블록이 맨 위에 닿을 때까지. 10줄마다 빨라져요.', save: ['brickfall-stage-save', 'brickfall-save'] },
+  pack: { stage: '판에 놓인 회색 돌을 모두 지우면 통과. 스테이지마다 돌이 늘어나요.', endless: '조각을 놓을 곳이 없을 때까지 점수를 쌓아요.', save: ['brickpack-stage-save', 'brickpack-save'] },
+  brk: { stage: '모양이 다른 벽돌 판 10개를 차례로 깨요. 다 깨면 더 빠르게 반복돼요.', endless: '벽돌 벽이 몇 초마다 내려와요. 빨간 선에 닿으면 끝나요.', save: ['brickbreak-stage-save', 'brickbreak-save'] },
+  pop: { stage: '꽉 찬 판에서 목표 점수를 넘기면 통과. 판은 다시 차지 않아요.', endless: '아래에서 새 줄이 계속 올라와요. 맨 위를 넘으면 끝나요.', save: ['brickpop-stage-save', 'brickpop-save'] },
+};
+const modeSheet = $('modeSheet');
+let modeFor = null, modeOpener = null;
+function openModePicker(g) {
+  const info = MODE_INFO[g]; if (!info) { show(g); return; }
+  modeFor = g; modeOpener = document.activeElement;
+  $('modeTitle').textContent = (GAMES.find(x => x.id === g) || {}).name;
+  // only a game with some progress counts as "resume" (a fresh board is saved as soon as it is dealt)
+  const has = k => { const s = loadJSON(k); return !!s && ((+s.score || 0) > 0 || (+s.stage || 0) > 1 || (+s.loop || 0) > 0); };
+  const endlessBest = (GAMES.find(x => x.id === g) || {}).best();
+  for (const b of modeSheet.querySelectorAll('.mode-btn')) {
+    const st = b.dataset.gm === 'stage', rec = stageRec(g);
+    b.querySelector('.mode-desc').textContent = st ? info.stage : info.endless;
+    const meta = b.querySelector('.mode-meta'); meta.textContent = '';
+    if (has(info.save[st ? 0 : 1])) { const em = document.createElement('em'); em.textContent = '이어하기 · '; meta.append(em); }
+    meta.append(st ? (rec.max ? `최고 스테이지 ${rec.max} · ${fmt(rec.best)}점` : '아직 기록이 없어요') : (endlessBest ? `최고 ${fmt(endlessBest)}점` : '아직 기록이 없어요'));
+  }
+  modeSheet.hidden = false;
+  modeSheet.querySelector(`.mode-btn[data-gm="${GM[g]}"]`).focus();
+}
+function closeModePicker() { modeSheet.hidden = true; if (modeOpener && modeOpener.focus) modeOpener.focus(); modeFor = null; }
+function pickMode(gm) {
+  const g = modeFor; if (!g) return;
+  modeSheet.hidden = true; modeFor = null;
+  GM[g] = gm;
+  if (g === 'fall') fallMode(gm); else if (g === 'pack') packMode(gm); else if (g === 'brk') brkMode(gm); else if (g === 'pop') popMode(gm);
+  show(g);
+}
+for (const b of modeSheet.querySelectorAll('.mode-btn')) b.addEventListener('click', () => pickMode(b.dataset.gm));
+$('modeCancel').addEventListener('click', closeModePicker);
+modeSheet.addEventListener('pointerdown', e => { if (e.target === modeSheet) closeModePicker(); });
+addEventListener('keydown', e => {
+  if (modeSheet.hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeModePicker(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); const bs = [...modeSheet.querySelectorAll('.mode-btn')];
+    bs[(bs.indexOf(document.activeElement) + 1) % 2].focus();
+  }
+  if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Tab') e.stopImmediatePropagation();
+  else e.stopPropagation();
+}, true);
+
 function closeIntro() { intro.hidden = true; if (introOpener) introOpener.focus(); introOpener = null; }
 function maybeIntro(id) { if (INTRO[id] && !(loadJSON(INTRO_KEY) || []).includes(id)) openIntro(id); }
 $('introGo').addEventListener('click', closeIntro);

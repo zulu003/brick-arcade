@@ -4,6 +4,19 @@ const BW = 360, BH = 540, BRW = 32, BRH = 16, BOX = 20, BOY = 56, PAD_Y = 500, P
 // Bricks reaching the danger line end the game; the wall speeds up every ROWS_PER_LEVEL rows.
 const BCOLS = 10, DANGER_Y = PAD_Y - 40, ROWS_PER_LEVEL = 6, START_ROWS = 5;
 const dropEvery = lv => Math.max(3500, 9000 - (lv - 1) * 600);
+// Stage mode: hand-made walls. '.' empty, 1–3 = hits needed, X = unbreakable. After the last map they loop, faster.
+const STAGES = [
+  ['..........', '1111111111', '1111111111', '1111111111', '1111111111'],
+  ['....22....', '...1111...', '..222222..', '.11111111.', '2222222222'],
+  ['1.1.1.1.1.', '.2.2.2.2.2', '1.1.1.1.1.', 'XX......XX', '3333333333'],
+  ['3333333333', '2........2', '2.111111.2', '2.1XXXX1.2', '2.111111.2', '2........2', '3333333333'],
+  ['....33....', '...2222...', '..111111..', '.22222222.', '..111111..', '...2222...', '....33....'],
+  ['X.X.X.X.X.', '2222222222', '.X.X.X.X.X', '3333333333', '1111111111', '1111111111'],
+  ['11......11', '221....122', '3321..1233', '3321..1233', '221....122', '11......11'],
+  ['.1.1.1.1.1', '2.2.2.2.2.', '.3.3.3.3.3', 'X.X.X.X.X.', '.2.2.2.2.2', '1.1.1.1.1.'],
+  ['2222222222', '2XXXXXXXX2', '2.3.33.3.2', '2.333333.2', '2..3333..2', '2XXX..XXX2', '1111111111'],
+  ['3.......33', '33.....333', '333...3332', '2333.33322', '1233333221', '1122222211', '..111111..'],
+];
 const HP_COLOR = { 1: '#6ccf86', 2: '#f4cc4a', 3: '#ef6670' };
 const ITEM_KIND = [
   { k: 'W', label: '⟷', color: '#5c86f2', w: 4 },
@@ -15,11 +28,21 @@ setupHiDPI(bcv, BW, BH, bctx);
 let bBest = load('brickbreak-best');
 let B = brkFresh();
 
-function brkFresh() {
+function brkFresh(gm = 'endless') {
   return { level: 1, rows: 0, dropT: 0, slide: 0, score: 0, lives: 3, bricks: [], balls: [], items: [], fx: [],
-    px: BW / 2, pw: 64, wideT: 0, mode: 'ready', msg: null, msgT: 0, pop: null, reason: '', keys: { l: false, r: false } };
+    px: BW / 2, pw: 64, wideT: 0, mode: 'ready', msg: null, msgT: 0, pop: null, reason: '', keys: { l: false, r: false },
+    gm, stage: 0, loop: 0 };
 }
-const brkSpeed = () => Math.min(520, 300 + (B.level - 1) * 14);
+const stageNo = () => B.loop * STAGES.length + B.stage + 1;
+const brkSpeed = () => B.gm === 'stage' ? Math.min(540, 300 + B.stage * 14 + B.loop * 60) : Math.min(520, 300 + (B.level - 1) * 14);
+const brkBest = () => B.gm === 'stage' ? stageRec('brk').best : bBest;
+function loadMap() {
+  B.bricks = []; B.items = []; B.fx = []; B.slide = 0;
+  STAGES[B.stage].forEach((row, r) => [...row].forEach((ch, c) => {
+    if (ch !== '.') B.bricks.push({ x: BOX + c * BRW, y: BOY + r * BRH, hp: ch === 'X' ? Infinity : +ch });
+  }));
+  resetBall();
+}
 function addRow(animate) {
   const lv = B.level;
   const pGap = Math.max(.08, .3 - lv * .02), p3 = Math.min(.35, (lv - 1) * .05), p2 = Math.min(.45, .15 + (lv - 1) * .05);
@@ -53,37 +76,50 @@ function launch() {
     b.vx = s * Math.sin(a); b.vy = -s * Math.cos(a); b.stuck = false;
   }
 }
-function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); brkSave(); }
-// saved on every pause and every new row; on return the ball waits on the paddle
-const BRK_SAVE = 'brickbreak-save';
+function brkStart() { B = brkFresh(B.gm); B.mode = 'play'; if (B.gm === 'stage') loadMap(); else loadStage(); brkOverlay(); brkSave(); }
+// saved on every pause, life lost and new row / stage; on return the ball waits on the paddle (one save per mode)
+const brkKey = gm => gm === 'stage' ? 'brickbreak-stage-save' : 'brickbreak-save';
 function brkSave() {
-  if (B.mode !== 'play' && B.mode !== 'pause') { dropKey(BRK_SAVE); return; }
-  saveJSON(BRK_SAVE, { level: B.level, rows: B.rows, dropT: B.dropT, score: B.score, lives: B.lives, px: B.px,
-    bricks: B.bricks.map(k => ({ x: k.x, y: k.y, hp: k.hp })) });
+  if (B.mode !== 'play' && B.mode !== 'pause') { dropKey(brkKey(B.gm)); return; }
+  saveJSON(brkKey(B.gm), { level: B.level, rows: B.rows, dropT: B.dropT, score: B.score, lives: B.lives, px: B.px,
+    stage: B.stage, loop: B.loop,
+    bricks: B.bricks.map(k => ({ x: k.x, y: k.y, hp: k.hp === Infinity ? -1 : k.hp })) });
 }
-function brkResume() {
-  const s = loadJSON(BRK_SAVE);
+function brkResume(gm = 'endless') {
+  const s = loadJSON(brkKey(gm));
   if (!s || !Array.isArray(s.bricks)) return false;
-  B = brkFresh();
+  B = brkFresh(gm);
   Object.assign(B, { level: +s.level || 1, rows: +s.rows || 0, dropT: +s.dropT || dropEvery(+s.level || 1), score: +s.score || 0,
-    lives: +s.lives || 1, px: +s.px || BW / 2, bricks: s.bricks.filter(k => k && k.hp > 0), mode: 'pause' });
+    lives: +s.lives || 1, px: +s.px || BW / 2, stage: Math.min(STAGES.length - 1, +s.stage || 0), loop: +s.loop || 0,
+    bricks: s.bricks.filter(k => k && k.hp !== 0).map(k => ({ x: k.x, y: k.y, hp: k.hp === -1 ? Infinity : k.hp })), mode: 'pause' });
   resetBall();
   return true;
+}
+function brkMode(gm) {
+  if (B.gm === gm && B.mode !== 'over') return;
+  if (!brkResume(gm)) B = brkFresh(gm);
+  brkOverlay();
 }
 function brkPause() {
   if (B.mode === 'play') B.mode = 'pause'; else if (B.mode === 'pause') B.mode = 'play';
   B.keys.l = B.keys.r = false; brkOverlay(); brkSave();
 }
 function brkOver() {
-  B.mode = 'over'; sfx('over'); dropKey(BRK_SAVE); recordGame('brk', B.score);
-  if (B.score > bBest) { bBest = B.score; save('brickbreak-best', bBest); }
+  B.mode = 'over'; sfx('over'); dropKey(brkKey(B.gm));
+  recordGame(B.gm === 'stage' ? 'brk-stage' : 'brk', B.score);
+  if (B.gm === 'stage') B.newBest = stageRecSave('brk', B.score, stageNo());
+  else { B.newBest = B.score > bBest; if (B.newBest) { bBest = B.score; save('brickbreak-best', bBest); } }
   brkOverlay();
 }
 function brkOverlay() {
   const o = $('bOverlay');
   if (B.mode === 'play') { o.hidden = true; return; }
   o.hidden = false; $('bOvScore').hidden = true;
-  if (B.mode === 'ready') {
+  if (B.mode === 'ready' && B.gm === 'stage') {
+    $('bOvTitle').textContent = 'BRICKBREAK · 스테이지';
+    $('bOvText').innerHTML = `벽돌을 모두 깨면 다음 스테이지예요. 모양이 다른 ${STAGES.length}개 스테이지가 있고, 다 깨면 더 빠르게 반복돼요.<br>회색 벽돌은 깨지지 않아요.`;
+    $('bOvBtn').textContent = '시작';
+  } else if (B.mode === 'ready') {
     $('bOvTitle').textContent = 'BRICKBREAK';
     $('bOvText').innerHTML = '벽돌 벽이 몇 초마다 한 줄씩 내려와요.<br>빨간 선에 닿기 전에 깨세요. 끝없이 이어지고 점점 빨라져요.<br>노랑·빨강 벽돌은 여러 번 맞혀야 해요.';
     $('bOvBtn').textContent = '시작';
@@ -93,7 +129,7 @@ function brkOverlay() {
     $('bOvBtn').textContent = '계속';
   } else {
     $('bOvTitle').textContent = '게임 오버';
-    $('bOvText').textContent = `${B.reason} 레벨 ${B.level}까지 버텼어요.` + (B.score >= bBest && B.score > 0 ? ' 새 최고 기록입니다.' : '');
+    $('bOvText').textContent = (B.gm === 'stage' ? `${B.reason} 스테이지 ${stageNo()}까지 왔어요.` : `${B.reason} 레벨 ${B.level}까지 버텼어요.`) + (B.newBest && B.score > 0 ? ' 새 최고 기록입니다.' : '');
     $('bOvScore').hidden = false; $('bOvScore').textContent = fmt(B.score);
     $('bOvBtn').textContent = '다시 시작';
   }
@@ -162,14 +198,21 @@ function stepBall(b, s) {
 function updateBrk(dt) {
   if (B.mode !== 'play') return;
   const s = dt / 1000;
-  if (B.msg) { B.msgT -= dt; if (B.msgT <= 0) B.msg = null; }
+  if (B.msg) {
+    B.msgT -= dt;
+    if (B.msgT <= 0) {
+      const m = B.msg; B.msg = null;
+      if (m === 'clear') { B.stage++; if (B.stage >= STAGES.length) { B.stage = 0; B.loop++; } loadMap(); brkSave(); }
+    }
+    if (B.msg === 'clear') return;
+  }
   if (B.slide > 0) B.slide = Math.max(0, B.slide - BRH * dt / 220);
   // the wall only advances while a ball is in play
-  if (B.balls.some(b => !b.stuck)) {
+  if (B.gm !== 'stage' && B.balls.some(b => !b.stuck)) {
     B.dropT -= dt;
     if (B.dropT <= 0) addRow(true);
   }
-  if (B.bricks.some(k => k.y + BRH >= DANGER_Y)) { B.reason = '벽돌이 빨간 선에 닿았어요.'; brkOver(); return; }
+  if (B.gm !== 'stage' && B.bricks.some(k => k.y + BRH >= DANGER_Y)) { B.reason = '벽돌이 빨간 선에 닿았어요.'; brkOver(); return; }
   const dir = (B.keys.r ? 1 : 0) - (B.keys.l ? 1 : 0);
   if (dir) B.px += dir * 460 * s;
   B.px = Math.max(B.pw / 2, Math.min(BW - B.pw / 2, B.px));
@@ -192,7 +235,12 @@ function updateBrk(dt) {
     if (it.y + 8 >= PAD_Y && it.y - 8 <= PAD_Y + PAD_H && Math.abs(it.x - B.px) <= B.pw / 2 + 14) { it.got = true; applyItem(it.kind); }
   }
   B.items = B.items.filter(it => !it.got && it.y < BH + 20);
-  if (!B.bricks.length) {
+  if (B.gm === 'stage') {
+    if (!B.bricks.some(k => k.hp !== Infinity)) {
+      B.score += 500 + B.lives * 100; B.items = []; B.msg = 'clear'; B.msgT = 1600; sfx('stage');
+      stageRecSave('brk', B.score, stageNo() + 1);
+    }
+  } else if (!B.bricks.length) {
     B.score += 300; addRow(true); addRow(false);
     B.pop = { text: '싹쓸이 +300', t: performance.now() }; sfx('stage');
   }
@@ -203,7 +251,7 @@ function drawBrk(now) {
   g.addColorStop(0, BFIELD); g.addColorStop(1, tok('--brk-bg', '#3b4878'));
   c.fillStyle = g; c.fillRect(0, 0, BW, BH);
   // time until the next row, as a thin bar along the top
-  if (B.mode !== 'ready') {
+  if (B.mode !== 'ready' && B.gm !== 'stage') {
     const q = Math.max(0, Math.min(1, B.dropT / dropEvery(B.level)));
     c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(0, 0, BW, 5);
     c.fillStyle = q < .25 ? '#ef6670' : tok('--accent', '#ffb547'); c.fillRect(0, 0, BW * (1 - q), 5);
@@ -211,8 +259,10 @@ function drawBrk(now) {
   // danger line: brighter as the wall gets close
   const lowest = B.bricks.reduce((m, k) => Math.max(m, k.y + BRH), 0);
   const near = Math.max(0, Math.min(1, 1 - (DANGER_Y - lowest) / 120));
-  c.strokeStyle = `rgba(239,102,112,${.35 + .6 * near})`; c.lineWidth = 2; c.setLineDash([8, 6]);
-  c.beginPath(); c.moveTo(0, DANGER_Y + .5); c.lineTo(BW, DANGER_Y + .5); c.stroke(); c.setLineDash([]);
+  if (B.gm !== 'stage') {
+    c.strokeStyle = `rgba(239,102,112,${.35 + .6 * near})`; c.lineWidth = 2; c.setLineDash([8, 6]);
+    c.beginPath(); c.moveTo(0, DANGER_Y + .5); c.lineTo(BW, DANGER_Y + .5); c.stroke(); c.setLineDash([]);
+  }
   for (const k of B.bricks) bevelRect(c, k.x, k.y - B.slide, BRW, BRH, k.hp === Infinity ? '#9a97b8' : HP_COLOR[Math.min(3, k.hp)]);
   B.fx = B.fx.filter(f => now - f.t < 300);
   for (const f of B.fx) {
@@ -236,7 +286,8 @@ function drawBrk(now) {
   // messages
   c.textAlign = 'center'; c.textBaseline = 'middle';
   let msg = null;
-  if (B.msg === 'miss') msg = '공을 놓쳤어요';
+  if (B.msg === 'clear') msg = `스테이지 ${stageNo()} 클리어!`;
+  else if (B.msg === 'miss') msg = '공을 놓쳤어요';
   else if (B.mode === 'play' && B.balls.some(b => b.stuck)) msg = '탭 또는 Space로 발사';
   if (msg) {
     c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
@@ -253,8 +304,9 @@ function drawBrk(now) {
       c.globalAlpha = 1;
     }
   }
-  setText('bScore', B.score); setText('bStage', B.level);
-  setText('bLives', '♥'.repeat(Math.max(0, B.lives)) || '–'); setText('bBest', Math.max(bBest, B.score));
+  setText('bStageL', B.gm === 'stage' ? '스테이지' : '레벨');
+  setText('bScore', B.score); setText('bStage', B.gm === 'stage' ? stageNo() : B.level);
+  setText('bLives', '♥'.repeat(Math.max(0, B.lives)) || '–'); setText('bBest', Math.max(brkBest(), B.score));
 }
 function brkLocalX(e) { const r = bcv.getBoundingClientRect(); return (e.clientX - r.left) * BW / r.width; }
 let brkTouch = null;

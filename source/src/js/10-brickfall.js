@@ -22,11 +22,26 @@ setupHiDPI(nextCv, 96, 192, nctx);
 
 let best = load('brickfall-best');
 let S;
-function fresh() {
+function fresh(gm = 'endless') {
   return { board: Array.from({length: ROWS}, () => Array(COLS).fill(null)),
     queue: [], cur: null, hold: null, canHold: true, score: 0, lines: 0, level: 1,
-    mode: 'ready', dropAcc: 0, lockT: 0, lockResets: 0, clearing: null, clearT: 0 };
+    mode: 'ready', dropAcc: 0, lockT: 0, lockResets: 0, clearing: null, clearT: 0,
+    gm, stage: 1, stageLines: 0 };
 }
+// Stage mode: clear FALL_GOAL lines to pass. Each stage starts with more junk rows (one gap each) and falls faster.
+const FALL_GOAL = 10, JUNK = '#8a85a6';
+const junkRows = n => Math.min(10, n + 1);
+const fallBest = () => S.gm === 'stage' ? stageRec('fall').best : best;
+function setupFallStage(n) {
+  S.stage = n; S.stageLines = 0; S.level = n; S.hold = null; S.canHold = true; S.cur = null;
+  S.board = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+  for (let k = 0; k < junkRows(n); k++) {
+    const gap = Math.floor(Math.random() * COLS);
+    S.board[ROWS - 1 - k] = Array.from({length: COLS}, (_, c) => c === gap ? null : 'G');
+  }
+  spawn(nextType());
+}
+const cellColor = t => t === 'G' ? JUNK : COLORS[t];
 const rotM = (m, dir) => {
   const n = m.length, out = m.map(r => r.slice());
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
@@ -105,30 +120,51 @@ function finishClear() {
   while (S.board.length < ROWS) S.board.unshift(Array(COLS).fill(null));
   S.score += LINE_PTS[n] * S.level;
   S.lines += n;
-  S.level = Math.floor(S.lines / 10) + 1;
   S.clearing = null;
+  if (S.gm === 'stage') {
+    S.stageLines += n;
+    if (S.stageLines >= FALL_GOAL) {
+      S.clearBonus = 500 * S.stage; S.score += S.clearBonus;
+      S.mode = 'clear'; S.cur = null; sfx('stage');
+      stageRecSave('fall', S.score, S.stage + 1);
+      showOverlay(); fallSave(); return;
+    }
+  } else S.level = Math.floor(S.lines / 10) + 1;
   spawn(nextType()); S.canHold = true;
   fallSave();
 }
 const gravityMs = lv => Math.max(8, Math.pow(Math.max(0.8 - (lv - 1) * 0.007, 0.05), lv - 1) * 1000);
 
-function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); fallSave(); }
-// the game in progress is saved on every lock and pause, and comes back paused
-const FALL_SAVE = 'brickfall-save';
-function fallSave() {
-  if (S.mode !== 'play' && S.mode !== 'pause') { dropKey(FALL_SAVE); return; }
-  saveJSON(FALL_SAVE, Object.assign({}, S, { mode: 'pause', clearing: null }));
+function start() {
+  S = fresh(S.gm); S.mode = 'play';
+  if (S.gm === 'stage') setupFallStage(1); else spawn(nextType());
+  showOverlay(); fallSave();
 }
-function fallResume() {
-  const s = loadJSON(FALL_SAVE);
+function nextFallStage() { S.mode = 'play'; setupFallStage(S.stage + 1); showOverlay(); fallSave(); }
+// the game in progress is saved on every lock and pause, and comes back paused (one save per mode)
+const fallKey = gm => gm === 'stage' ? 'brickfall-stage-save' : 'brickfall-save';
+function fallSave() {
+  if (S.mode !== 'play' && S.mode !== 'pause' && S.mode !== 'clear') { dropKey(fallKey(S.gm)); return; }
+  saveJSON(fallKey(S.gm), Object.assign({}, S, { mode: S.mode === 'clear' ? 'clear' : 'pause', clearing: null }));
+}
+function fallResume(gm = 'endless') {
+  const s = loadJSON(fallKey(gm));
   if (!s || !Array.isArray(s.board) || s.board.length !== ROWS || !Array.isArray(s.queue)) return false;
-  S = Object.assign(fresh(), s, { mode: 'pause', clearing: null });
-  if (!S.cur) spawn(nextType());
+  S = Object.assign(fresh(gm), s, { gm, mode: s.mode === 'clear' ? 'clear' : 'pause', clearing: null });
+  if (!S.cur && S.mode !== 'clear') spawn(nextType());
   return true;
 }
+// switch Brickfall to a mode: keep the current game if it is already that mode, else pick up its save
+function fallMode(gm) {
+  if (S.gm === gm && S.mode !== 'over') return;
+  if (!fallResume(gm)) S = fresh(gm);
+  releaseAll(); showOverlay();
+}
 function gameOver() {
-  S.mode = 'over'; S.cur = null; sfx('over'); dropKey(FALL_SAVE); recordGame('fall', S.score);
-  if (S.score > best) { best = S.score; save('brickfall-best', best); }
+  S.mode = 'over'; S.cur = null; sfx('over'); dropKey(fallKey(S.gm));
+  recordGame(S.gm === 'stage' ? 'fall-stage' : 'fall', S.score);
+  if (S.gm === 'stage') S.newBest = stageRecSave('fall', S.score, S.stage);
+  else { S.newBest = S.score > best; if (S.newBest) { best = S.score; save('brickfall-best', best); } }
   showOverlay();
 }
 function togglePause() {
@@ -142,32 +178,42 @@ function showOverlay() {
   if (S.mode === 'play') { ov.hidden = true; return; }
   ov.hidden = false; ovScore.hidden = true;
   if (S.mode === 'ready') {
-    ovTitle.textContent = 'BRICKFALL';
-    ovText.innerHTML = '줄을 채우면 사라집니다.<br>10줄마다 레벨이 오르고 빨라집니다.';
+    ovTitle.textContent = S.gm === 'stage' ? 'BRICKFALL · 스테이지' : 'BRICKFALL';
+    ovText.innerHTML = S.gm === 'stage' ? `스테이지마다 ${FALL_GOAL}줄을 지우면 통과예요.<br>아래에 쌓인 회색 줄이 점점 늘어나고 빨라져요.`
+      : '줄을 채우면 사라집니다.<br>10줄마다 레벨이 오르고 빨라집니다.';
     ovBtn.textContent = '시작';
+  } else if (S.mode === 'clear') {
+    ovTitle.textContent = `스테이지 ${S.stage} 클리어!`;
+    ovText.textContent = `보너스 +${fmt(S.clearBonus || 0)}점. 다음 스테이지는 회색 줄 ${junkRows(S.stage + 1)}개로 시작해요.`;
+    ovScore.hidden = false; ovScore.textContent = fmt(S.score);
+    ovBtn.textContent = `스테이지 ${S.stage + 1} 시작`;
   } else if (S.mode === 'pause') {
     ovTitle.textContent = '일시정지';
     ovText.textContent = 'P 또는 Esc로 계속합니다.';
     ovBtn.textContent = '계속';
   } else {
     ovTitle.textContent = '게임 오버';
-    ovText.textContent = S.score >= best && S.score > 0 ? '새 최고 기록입니다.' : `레벨 ${S.level} · ${S.lines}줄`;
+    ovText.textContent = (S.gm === 'stage' ? `스테이지 ${S.stage}에서 끝났어요.` : `레벨 ${S.level} · ${S.lines}줄.`) + (S.newBest && S.score > 0 ? ' 새 최고 기록입니다.' : '');
     ovScore.hidden = false; ovScore.textContent = fmt(S.score);
     ovBtn.textContent = '다시 시작';
   }
 }
-ovBtn.addEventListener('click', () => { if (S.mode === 'pause') togglePause(); else start(); });
+ovBtn.addEventListener('click', () => { if (S.mode === 'pause') togglePause(); else if (S.mode === 'clear') nextFallStage(); else start(); });
 
 const shown = {};
 function setText(id, v) { if (shown[id] !== v) { shown[id] = v; $(id).textContent = typeof v === 'number' ? fmt(v) : v; } }
 function updateStats() {
-  setText('sScore', S.score); setText('sLines', S.lines); setText('sLevel', S.level); setText('sBest', Math.max(best, S.score));
+  const st = S.gm === 'stage';
+  setText('sLinesL', st ? '목표' : '줄'); setText('sLevelL', st ? '스테이지' : '레벨');
+  setText('sScore', S.score); setText('sLines', st ? `${Math.min(S.stageLines, FALL_GOAL)}/${FALL_GOAL}` : S.lines);
+  setText('sLevel', st ? S.stage : S.level); setText('sBest', Math.max(fallBest(), S.score));
 }
 
 const held = { left: false, right: false, down: false };
 let dasDir = 0, dasT = 0, arrT = 0, softT = 0;
 function releaseAll() { held.left = held.right = held.down = false; dasDir = 0; }
 function press(act) {
+  if (S.mode === 'clear') { if (act === 'drop' || act === 'start') nextFallStage(); return; }
   if (S.mode === 'ready' || S.mode === 'over') { if (act === 'drop' || act === 'start') start(); return; }
   if (act === 'pause') { togglePause(); return; }
   if (S.mode !== 'play' || !S.cur) {
@@ -196,16 +242,16 @@ const KEYMAP = { ArrowLeft:'left', ArrowRight:'right', ArrowDown:'down', ArrowUp
   Space:'drop', KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold', KeyP:'pause', Escape:'pause', Enter:'start' };
 addEventListener('keydown', e => {
   if (current === 'menu') {
-    if (e.key === '1') show('fall'); else if (e.key === '2') show('pack');
-    else if (e.key === '3') show('brk'); else if (e.key === '4') show('stk');
-    else if (e.key === '5') show('pop'); else if (e.key === '6') show('sld');
+    if (e.key === '1') goGame('fall'); else if (e.key === '2') goGame('pack');
+    else if (e.key === '3') goGame('brk'); else if (e.key === '4') goGame('stk');
+    else if (e.key === '5') goGame('pop'); else if (e.key === '6') goGame('sld');
     return;
   }
   if (current !== 'fall') return;
   const act = KEYMAP[e.code]; if (!act) return;
   e.preventDefault();
   if (e.repeat) return;
-  if (act === 'start') { if (S.mode === 'pause') togglePause(); else if (S.mode !== 'play') start(); return; }
+  if (act === 'start') { if (S.mode === 'pause') togglePause(); else if (S.mode === 'clear') nextFallStage(); else if (S.mode !== 'play') start(); return; }
   press(act);
 });
 addEventListener('keyup', e => { if (current !== 'fall') return; const act = KEYMAP[e.code]; if (act) release(act); });
@@ -249,7 +295,7 @@ function drawFall() {
   const flash = S.clearing ? (Math.floor(S.clearT / 60) % 2 === 0) : false;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
     const t = S.board[r][c]; if (!t) continue;
-    block(ctx, c * CELL, r * CELL, CELL, (S.clearing && S.clearing.includes(r) && flash) ? '#ffffff' : COLORS[t]);
+    block(ctx, c * CELL, r * CELL, CELL, (S.clearing && S.clearing.includes(r) && flash) ? '#ffffff' : cellColor(t));
   }
   if (S.cur && S.mode !== 'over') {
     const { m, x, type } = S.cur; let gy = S.cur.y;

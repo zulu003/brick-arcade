@@ -24,8 +24,33 @@ let pBest = load('brickpack-best');
 let P, drag = null;
 function packFresh() {
   const p = { grid: Array.from({length: PB}, () => Array(PB).fill(null)), tray: [null, null, null],
-    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [], daily: null, rs: 0 };
+    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [], daily: null, rs: 0, gm: 'endless', stage: 1 };
   return p;
+}
+// Stage mode: grey stones sit on the board. Clear every stone (by filling the lines through them) to pass.
+const STONE = '#8a85a6';
+const stoneCount = n => Math.min(22, 2 + 2 * n);
+const stonesLeft = () => P.grid.reduce((a, row) => a + row.filter(v => v === STONE).length, 0);
+const packBest = () => P.gm === 'stage' ? stageRec('pack').best : pBest;
+function packFillStage(n) {
+  P.stage = n; P.combo = 0; P.sinceClear = 0;
+  for (let t = 0; t < 50; t++) {
+    P.grid = Array.from({length: PB}, () => Array(PB).fill(null));
+    let k = 0;
+    while (k < stoneCount(n)) {
+      const r = Math.floor(Math.random() * PB), c = Math.floor(Math.random() * PB);
+      if (!P.grid[r][c]) { P.grid[r][c] = STONE; k++; }
+    }
+    // no line may start out full
+    const full = P.grid.some(row => row.every(Boolean)) || P.grid[0].some((_, x) => P.grid.every(row => row[x]));
+    if (!full) break;
+  }
+  deal();
+  P.texts.push({ text: `스테이지 ${n} · 회색 ${stoneCount(n)}개`, x: PW / 2, y: BY + PB * PC / 2, t: performance.now() + 200, color: tok('--accent', '#ffb547') });
+}
+function packTools() {
+  const st = P.gm === 'stage';
+  $('pDaily').hidden = st; $('pNew').textContent = st ? '처음부터' : '새 판';
 }
 // daily board: pieces come from a sequence seeded by the date
 const packRand = () => P.daily ? rngNext(P) : Math.random();
@@ -51,37 +76,56 @@ function deal() {
     if (set.some(fitsAny) || t === 39) { P.tray = set; return; }
   }
 }
-function packStart(daily) {
-  P = packFresh(); drag = null;
-  if (daily === true) { P.daily = today(); P.rs = seedOf('pack' + P.daily); }
-  deal();
-  $('pOverlay').hidden = true; updatePackStats(); packSave();
+function packStart(daily, gm = P ? P.gm : 'endless') {
+  P = packFresh(); P.gm = gm; drag = null;
+  if (daily === true && gm !== 'stage') { P.daily = today(); P.rs = seedOf('pack' + P.daily); }
+  if (gm === 'stage') packFillStage(1); else deal();
+  $('pOverlay').hidden = true; $('pRestart').textContent = '다시 시작'; packTools(); updatePackStats(); packSave();
   if (P.daily) P.texts.push({ text: `오늘의 판 · ${P.daily.slice(5).replace('-', '/')}`, x: PW / 2, y: BY + PB * PC / 2, t: performance.now() + 200, color: tok('--accent', '#ffb547') });
 }
-const PACK_SAVE = 'brickpack-save';
+const packKey = gm => gm === 'stage' ? 'brickpack-stage-save' : 'brickpack-save';
 function packSave() {
-  if (P.mode !== 'play') { dropKey(PACK_SAVE); return; }
-  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear, daily: P.daily, rs: P.rs });
+  if (P.mode !== 'play' && P.mode !== 'clear') { dropKey(packKey(P.gm)); return; }
+  saveJSON(packKey(P.gm), { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear, daily: P.daily, rs: P.rs,
+    mode: P.mode, stage: P.stage, clearBonus: P.clearBonus || 0 });
 }
 // pick up a saved game; false if there is none (or it is unreadable)
-function packResume() {
-  const s = loadJSON(PACK_SAVE);
+function packResume(gm = 'endless') {
+  const s = loadJSON(packKey(gm));
   if (!s || !Array.isArray(s.grid) || s.grid.length !== PB || !Array.isArray(s.tray)) return false;
-  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0, daily: s.daily || null, rs: s.rs | 0 });
-  drag = null; $('pOverlay').hidden = true; updatePackStats();
-  if (!P.tray.some(t => t && fitsAny(t))) packOver();
+  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0, daily: s.daily || null, rs: s.rs | 0,
+    gm, stage: +s.stage || 1, mode: s.mode === 'clear' ? 'clear' : 'play', clearBonus: +s.clearBonus || 0 });
+  drag = null; $('pOverlay').hidden = true; $('pRestart').textContent = '다시 시작'; packTools(); updatePackStats();
+  if (P.mode === 'clear') packShowClear();
+  else if (!P.tray.some(t => t && fitsAny(t))) packOver();
   return true;
 }
+function packMode(gm) {
+  if (P.gm === gm && P.mode !== 'over') return;
+  if (!packResume(gm)) packStart(false, gm);
+}
+function packShowClear() {
+  $('pOvTitle').textContent = `스테이지 ${P.stage} 클리어!`;
+  $('pOvText').textContent = `보너스 +${fmt(P.clearBonus || 0)}점. 다음 스테이지는 회색 돌 ${stoneCount(P.stage + 1)}개로 시작해요.`;
+  $('pOvScore').textContent = fmt(P.score);
+  $('pRestart').textContent = `스테이지 ${P.stage + 1}`;
+  $('pOverlay').hidden = false;
+}
 function packOver() {
-  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE); recordGame('pack', P.score);
-  if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
-  else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
+  P.mode = 'over'; sfx('over'); dropKey(packKey(P.gm)); recordGame(P.gm === 'stage' ? 'pack-stage' : 'pack', P.score);
+  $('pOvTitle').textContent = '게임 오버'; $('pRestart').textContent = '다시 시작';
+  const rec = P.gm === 'stage' ? stageRecSave('pack', P.score, P.stage) : P.score > pBest;
+  if (P.gm !== 'stage' && rec) { pBest = P.score; save('brickpack-best', pBest); }
+  $('pOvText').textContent = (P.gm === 'stage' ? `더 이상 놓을 자리가 없어요. 스테이지 ${P.stage}, 회색 돌 ${stonesLeft()}개 남았어요.` : '더 이상 놓을 자리가 없어요.') + (rec && P.score > 0 ? ' 새 최고 기록입니다.' : '');
   if (P.daily) $('pOvText').textContent += dailyLine('pack', P.daily, P.score);
   $('pOvScore').textContent = fmt(P.score);
   updatePackStats();
   setTimeout(() => { if (P.mode === 'over') $('pOverlay').hidden = false; }, 550);
 }
-$('pRestart').addEventListener('click', () => packStart(P.daily === today()));
+$('pRestart').addEventListener('click', () => {
+  if (P.mode === 'clear') { P.mode = 'play'; $('pOverlay').hidden = true; $('pRestart').textContent = '다시 시작'; packFillStage(P.stage + 1); updatePackStats(); packSave(); }
+  else packStart(P.daily === today());
+});
 $('pNew').addEventListener('click', () => packStart(false));
 $('pDaily').addEventListener('click', () => packStart(true));
 
@@ -123,14 +167,21 @@ function place(i, r, c) {
   }
   P.score += gain;
   sfx(n ? 'clear' : 'place', n + (P.combo >= 2 ? 1 : 0));
+  if (P.gm === 'stage' && n && !stonesLeft()) {
+    P.clearBonus = 200 * P.stage; P.score += P.clearBonus; P.mode = 'clear';
+    stageRecSave('pack', P.score, P.stage + 1);
+    updatePackStats(); packSave(); sfx('stage');
+    setTimeout(() => { if (P.mode === 'clear') packShowClear(); }, 650);
+    return;
+  }
   if (P.tray.every(t => !t)) deal();
   updatePackStats();
   if (!P.tray.some(t => t && fitsAny(t))) packOver(); else packSave();
 }
 function updatePackStats() {
   setText('pScore', P.score);
-  setText('pBest', Math.max(pBest, P.score));
-  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : P.daily ? '오늘의 판' : '');
+  setText('pBest', Math.max(packBest(), P.score));
+  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : P.gm === 'stage' ? `스테이지 ${P.stage} · 회색 ${stonesLeft()}개` : P.daily ? '오늘의 판' : '');
 }
 
 // dragging
