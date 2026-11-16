@@ -22,6 +22,8 @@ body{margin:0;font-size:14px;overscroll-behavior:none}
 :root{
   --bg:#15131e; --panel:#201d2d; --well:#0f0d17; --cell:#1d1a2a; --line:#302b44;
   --ink:#efeaf7; --muted:#9b93b5; --accent:#ffb547; --veil:rgba(15,13,23,.88);
+  /* Brickpack only: a lighter dusk-violet set so the board reads clearly */
+  --pack-bg:#4f4a82; --pack-well:#363162; --pack-cell:#4a437c; --pack-line:#6e67a8; --pack-muted:#d0cbea; --pack-veil:rgba(42,38,80,.9);
   --display:"Bungee","Impact",system-ui,sans-serif;
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
@@ -91,6 +93,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .pad button:active{filter:brightness(1.35)}
 
 /* brickpack */
+body.pack{--bg:var(--pack-bg);--line:var(--pack-line);--muted:var(--pack-muted);--veil:var(--pack-veil)}
 .pstats{display:flex;gap:28px;justify-content:center;align-items:flex-end}
 .pstats .stat{align-items:center}
 .combo{font-family:var(--display);font-size:15px;color:var(--accent);min-width:7ch;text-align:center}
@@ -220,6 +223,7 @@ const PALETTE = Object.values(COLORS);
 const css = getComputedStyle(document.documentElement);
 const tok = (n, d) => css.getPropertyValue(n).trim() || d;
 const WELL = tok('--well', '#0f0d17'), GRID = tok('--line', '#302b44'), EMPTY = tok('--cell', '#1d1a2a');
+const PWELL = tok('--pack-well', '#363162'), PEMPTY = tok('--pack-cell', '#4a437c');
 const fmt = n => n.toLocaleString('ko-KR');
 const load = k => { try { return parseInt(localStorage.getItem(k) || '0', 10) || 0; } catch (e) { return 0; } };
 const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
@@ -250,6 +254,7 @@ function show(name, fromHash) {
   if (current === 'fall' && name !== 'fall' && S.mode === 'play') togglePause();
   for (const k in screens) screens[k].hidden = k !== name;
   current = name;
+  document.body.classList.toggle('pack', name === 'pack');
   if (name === 'menu') refreshMenu();
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);
@@ -694,7 +699,7 @@ pcv.addEventListener('contextmenu', e => e.preventDefault());
 function drawPack(now) {
   const c = pctx;
   c.clearRect(0, 0, PW, PH);
-  c.fillStyle = WELL; rrect(c, BX - 8, BY - 8, PB * PC + 16, PB * PC + 16, 10);
+  c.fillStyle = PWELL; rrect(c, BX - 8, BY - 8, PB * PC + 16, PB * PC + 16, 10);
 
   let prev = null, hlColor = null;
   const hlRows = new Set(), hlCols = new Set();
@@ -708,7 +713,7 @@ function drawPack(now) {
   for (let y = 0; y < PB; y++) for (let x = 0; x < PB; x++) {
     const px = BX + x * PC, py = BY + y * PC, v = P.grid[y][x];
     if (v) block(c, px, py, PC, (hlRows.has(y) || hlCols.has(x)) ? hlColor : v);
-    else { c.fillStyle = EMPTY; rrect(c, px + 2, py + 2, PC - 4, PC - 4, 5); }
+    else { c.fillStyle = PEMPTY; rrect(c, px + 2, py + 2, PC - 4, PC - 4, 5); }
   }
   if (prev) {
     const p = P.tray[drag.i];
@@ -743,7 +748,7 @@ function drawPack(now) {
     const k = (now - t.t) / 900; if (k < 0) continue;
     c.globalAlpha = 1 - k * k;
     const y = t.y - 36 * k;
-    c.lineWidth = 5; c.strokeStyle = WELL; c.strokeText(t.text, t.x, y);
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, t.x, y);
     c.fillStyle = t.color; c.fillText(t.text, t.x, y);
   }
   c.globalAlpha = 1;
