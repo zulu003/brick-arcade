@@ -169,6 +169,23 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .vol-row b{font-family:var(--mono);font-weight:500;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
 .note{margin:0;color:var(--muted);font-size:12px}
 .seg.two .seg-row{grid-template-columns:repeat(2,1fr)}
+.sheet-card{max-height:100%;overflow:auto}
+.bar-r{gap:6px}
+.menu-tools{gap:8px}
+.intro-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;line-height:1.5}
+.stats-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;width:min(100%,820px)}
+.st-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.st-card h3{margin:0;font-family:var(--display);font-weight:400;font-size:17px}
+.st-nums{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.st-nums span{display:flex;flex-direction:column;gap:2px;font-size:12px;color:var(--muted)}
+.st-nums b{font-family:var(--mono);font-weight:500;font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums}
+.st-bars{display:flex;align-items:flex-end;gap:3px;height:36px}
+.st-bars i{flex:1;max-width:22px;background:var(--accent);border-radius:2px 2px 0 0;min-height:2px;opacity:.85}
+.st-foot{font-size:12px;color:var(--muted)}
+.xfer{width:min(100%,820px);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.xfer h2{margin:0;font-family:var(--display);font-weight:400;font-size:17px}
+.xfer .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.xfer textarea{width:100%;box-sizing:border-box;font:500 12px var(--mono);background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical;word-break:break-all}
 .seg.two .note{margin-top:8px}
 .seg input:disabled+span{opacity:.45}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;display:flex;align-items:center;gap:10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);font-weight:600;font-size:14px;width:max-content;max-width:calc(100vw - 32px)}
@@ -236,13 +253,13 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
       </button>
     </div>
-    <div class="menu-tools"><button class="gear" type="button" data-settings>⚙ 설정</button></div>
+    <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
     <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
   </section>
 
   <!-- ============ BRICKFALL ============ -->
   <section class="screen" id="scrFall" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKFALL</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKFALL</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="game">
       <div class="hold">
         <div class="panel"><span class="label">홀드</span><canvas id="holdCv" class="mini" width="96" height="64"></canvas></div>
@@ -292,7 +309,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 
   <!-- ============ BRICKPACK ============ -->
   <section class="screen" id="scrPack" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPACK</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="pstats">
       <div class="stat score"><span class="label">점수</span><b id="pScore">0</b></div>
       <div class="combo" id="pCombo" aria-live="polite"></div>
@@ -310,12 +327,13 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         </div>
       </div>
     </div>
-    <p class="hint">아래 조각을 끌어서 판 위에 놓으세요. 놓을 수 없는 조각은 흐리게 보여요.</p>
+    <div class="tools"><button class="back" type="button" id="pNew">새 판</button><button class="back" type="button" id="pDaily">오늘의 판</button></div>
+    <p class="hint">아래 조각을 끌어서 판 위에 놓으세요. 놓을 수 없는 조각은 흐리게 보여요. 오늘의 판은 하루 동안 모두에게 같은 조각이 나와요.</p>
   </section>
 
   <!-- ============ BRICKBREAK ============ -->
   <section class="screen" id="scrBrk" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKBREAK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKBREAK</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="hud">
       <div class="stat score"><span class="label">점수</span><b id="bScore">0</b></div>
       <div class="stat"><span class="label">레벨</span><b id="bStage">1</b></div>
@@ -336,7 +354,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 
   <!-- ============ BRICKSTACK ============ -->
   <section class="screen" id="scrStk" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSTACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSTACK</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="hud">
       <div class="stat score"><span class="label">높이</span><b id="tScore">0</b></div>
       <div class="stat"><span class="label">최고</span><b id="tBest">0</b></div>
@@ -358,7 +376,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 
   <!-- ============ BRICKPOP ============ -->
   <section class="screen" id="scrPop" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPOP</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPOP</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="hud">
       <div class="stat score"><span class="label">점수</span><b id="oScore">0</b></div>
       <div class="stat"><span class="label">레벨</span><b id="oLevel">1</b></div>
@@ -378,13 +396,13 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         </div>
       </div>
     </div>
-    <div class="tools"><button class="back" type="button" id="oNew">새 판</button></div>
+    <div class="tools"><button class="back" type="button" id="oNew">새 판</button><button class="back" type="button" id="oDaily">오늘의 판</button></div>
     <p class="hint">같은 색이 2개 이상 붙은 덩어리를 누르면 터져요. n개면 (n−2)²점. 몇 번 터뜨릴 때마다 아래에서 새 줄이 올라오고(판 아래 줄이 다음 줄), 벽돌이 맨 위를 넘으면 끝나요. 판을 비우면 보너스 1,000점.</p>
   </section>
 
   <!-- ============ BRICKSLIDE ============ -->
   <section class="screen" id="scrSld" hidden>
-    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSLIDE</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSLIDE</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
     <div class="hud">
       <div class="stat score"><span class="label">점수</span><b id="lScore">0</b></div>
       <div class="stat"><span class="label">지운 줄</span><b id="lLines">0</b></div>
@@ -404,6 +422,34 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
     </div>
     <p class="hint">벽돌을 좌우로 끌어서 옮기면 떨어져서 줄을 채워요. 꽉 찬 줄은 지워지고, 한 번 옮길 때마다 아래에서 새 줄이 올라와요.</p>
   </section>
+
+  <!-- ============ STATS ============ -->
+  <section class="screen" id="scrStats" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">기록</span></span></div>
+    <div class="stats-list" id="statsList"></div>
+    <div class="xfer">
+      <h2>기록 옮기기</h2>
+      <p class="note">최고 기록, 통계, 하던 게임, 설정을 코드 하나로 옮겨요. 다른 휴대폰이나 브라우저에서 불러오기에 붙여 넣으세요.</p>
+      <div class="row"><button class="btn" type="button" id="xExport">내보내기</button><button class="btn ghost" type="button" id="xImportOpen">불러오기</button></div>
+      <div id="xOut" hidden>
+        <textarea id="xCode" readonly rows="4" aria-label="기록 코드"></textarea>
+        <div class="row"><button class="btn" type="button" id="xCopy">복사</button><span class="note" id="xMsg" aria-live="polite"></span></div>
+      </div>
+      <div id="xIn" hidden>
+        <textarea id="xPaste" rows="4" placeholder="여기에 코드를 붙여 넣으세요" aria-label="불러올 기록 코드"></textarea>
+        <div class="row"><button class="btn" type="button" id="xImport">이 코드로 덮어쓰기</button><span class="note" id="xInMsg" aria-live="polite"></span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO PLAY (first visit, or the ? button) ============ -->
+  <div class="sheet" id="intro" hidden role="dialog" aria-modal="true" aria-labelledby="introTitle">
+    <div class="sheet-card">
+      <h2 id="introTitle"></h2>
+      <ul class="intro-list" id="introList"></ul>
+      <button class="btn" id="introGo" type="button">시작하기</button>
+    </div>
+  </div>
 
   <!-- ============ UPDATE NOTICE (installed app only) ============ -->
   <div class="toast" id="updToast" hidden role="status">
@@ -437,6 +483,14 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         </div>
         <p class="note" id="vibeNote">줄을 지우거나 게임이 끝날 때 짧게 진동해요.</p>
       </fieldset>
+      <fieldset class="seg two">
+        <legend class="label">블록 무늬</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="marks" value="on" id="marksOn"><span>켜기</span></label>
+          <label><input type="radio" name="marks" value="off" id="marksOff"><span>끄기</span></label>
+        </div>
+        <p class="note">색마다 다른 무늬(● ▲ ■ ◆)를 그려서 색을 구분하기 쉽게 해요.</p>
+      </fieldset>
       <button class="btn" id="closeSettings" type="button">닫기</button>
     </div>
   </div>
@@ -459,6 +513,32 @@ const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {
 const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
 const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const dropKey = k => { try { localStorage.removeItem(k); } catch (e) {} };
+// local date as YYYY-MM-DD (for the daily board and the stats screen)
+const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// seeded random for the daily board: the state lives in o.rs so it can be saved and resumed
+function seedOf(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h | 0; }
+function rngNext(o) {
+  o.rs = (o.rs + 0x6D2B79F5) | 0;
+  let t = o.rs; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// colour-blind help: a small shape on each block colour (Settings → 블록 무늬)
+let MARKS = false;
+const MARK_OF = { '#ef6670': 'circle', '#f4cc4a': 'tri', '#5c86f2': 'square', '#6ccf86': 'diamond', '#b47cf2': 'plus', '#56cfe1': 'ring', '#f39b4a': 'x' };
+function drawMark(c, x, y, s, color) {
+  const kind = MARK_OF[color]; if (!kind || s < 14) return;
+  const cx = x + s / 2, cy = y + s / 2, r = s * .19;
+  c.fillStyle = 'rgba(20,16,36,.42)'; c.strokeStyle = 'rgba(20,16,36,.42)'; c.lineWidth = Math.max(2, s * .08);
+  c.beginPath();
+  if (kind === 'circle') { c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); }
+  else if (kind === 'ring') { c.arc(cx, cy, r * .85, 0, Math.PI * 2); c.stroke(); }
+  else if (kind === 'square') { c.fillRect(cx - r * .9, cy - r * .9, r * 1.8, r * 1.8); }
+  else if (kind === 'tri') { c.moveTo(cx, cy - r * 1.1); c.lineTo(cx + r * 1.1, cy + r * .85); c.lineTo(cx - r * 1.1, cy + r * .85); c.closePath(); c.fill(); }
+  else if (kind === 'diamond') { c.moveTo(cx, cy - r * 1.2); c.lineTo(cx + r, cy); c.lineTo(cx, cy + r * 1.2); c.lineTo(cx - r, cy); c.closePath(); c.fill(); }
+  else if (kind === 'plus') { c.moveTo(cx - r, cy); c.lineTo(cx + r, cy); c.moveTo(cx, cy - r); c.lineTo(cx, cy + r); c.stroke(); }
+  else if (kind === 'x') { c.moveTo(cx - r * .8, cy - r * .8); c.lineTo(cx + r * .8, cy + r * .8); c.moveTo(cx + r * .8, cy - r * .8); c.lineTo(cx - r * .8, cy + r * .8); c.stroke(); }
+}
 
 function setupHiDPI(c, w, h, x) {
   const d = Math.min(window.devicePixelRatio || 1, 3);
@@ -472,6 +552,7 @@ function block(c, x, y, s, color, alpha = 1) {
   c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
   c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
   c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  if (MARKS) drawMark(c, x, y, s, color);
   c.globalAlpha = 1;
 }
 function rrect(c, x, y, w, h, r) {
@@ -479,7 +560,7 @@ function rrect(c, x, y, w, h, r) {
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
@@ -494,6 +575,8 @@ function show(name, fromHash) {
   document.body.classList.toggle('pop', name === 'pop');
   document.body.classList.toggle('sld', name === 'sld');
   if (name === 'menu') refreshMenu();
+  if (name === 'stats') renderStats();
+  maybeIntro(name);
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);
 }
@@ -634,6 +717,7 @@ function lock() {
   for (let r = 0; r < ROWS; r++) if (S.board[r].every(Boolean)) full.push(r);
   if (full.length) { S.clearing = full; S.clearT = 0; sfx('clear', full.length); }
   else { sfx('lock'); spawn(nextType()); S.canHold = true; }
+  fallSave();
 }
 function finishClear() {
   const n = S.clearing.length;
@@ -644,19 +728,33 @@ function finishClear() {
   S.level = Math.floor(S.lines / 10) + 1;
   S.clearing = null;
   spawn(nextType()); S.canHold = true;
+  fallSave();
 }
 const gravityMs = lv => Math.max(8, Math.pow(Math.max(0.8 - (lv - 1) * 0.007, 0.05), lv - 1) * 1000);
 
-function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); }
+function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); fallSave(); }
+// the game in progress is saved on every lock and pause, and comes back paused
+const FALL_SAVE = 'brickfall-save';
+function fallSave() {
+  if (S.mode !== 'play' && S.mode !== 'pause') { dropKey(FALL_SAVE); return; }
+  saveJSON(FALL_SAVE, Object.assign({}, S, { mode: 'pause', clearing: null }));
+}
+function fallResume() {
+  const s = loadJSON(FALL_SAVE);
+  if (!s || !Array.isArray(s.board) || s.board.length !== ROWS || !Array.isArray(s.queue)) return false;
+  S = Object.assign(fresh(), s, { mode: 'pause', clearing: null });
+  if (!S.cur) spawn(nextType());
+  return true;
+}
 function gameOver() {
-  S.mode = 'over'; S.cur = null; sfx('over');
+  S.mode = 'over'; S.cur = null; sfx('over'); dropKey(FALL_SAVE); recordGame('fall', S.score);
   if (S.score > best) { best = S.score; save('brickfall-best', best); }
   showOverlay();
 }
 function togglePause() {
   if (S.mode === 'play') S.mode = 'pause';
   else if (S.mode === 'pause') S.mode = 'play';
-  releaseAll(); showOverlay();
+  releaseAll(); showOverlay(); fallSave();
 }
 
 const ov = $('overlay'), ovTitle = $('ovTitle'), ovText = $('ovText'), ovScore = $('ovScore'), ovBtn = $('ovBtn');
@@ -825,13 +923,15 @@ let pBest = load('brickpack-best');
 let P, drag = null;
 function packFresh() {
   const p = { grid: Array.from({length: PB}, () => Array(PB).fill(null)), tray: [null, null, null],
-    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [] };
+    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [], daily: null, rs: 0 };
   return p;
 }
+// daily board: pieces come from a sequence seeded by the date
+const packRand = () => P.daily ? rngNext(P) : Math.random();
 function randPiece() {
-  let k = Math.random() * TOTAL_W, pick = PIECES[0];
+  let k = packRand() * TOTAL_W, pick = PIECES[0];
   for (const p of PIECES) { k -= p.weight; if (k < 0) { pick = p; break; } }
-  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(Math.random() * PALETTE.length)] };
+  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(packRand() * PALETTE.length)] };
 }
 function fitsAt(p, r, c) {
   for (const [dy, dx] of p.cells) {
@@ -850,33 +950,39 @@ function deal() {
     if (set.some(fitsAny) || t === 39) { P.tray = set; return; }
   }
 }
-function packStart() {
-  P = packFresh(); drag = null; deal();
+function packStart(daily) {
+  P = packFresh(); drag = null;
+  if (daily === true) { P.daily = today(); P.rs = seedOf('pack' + P.daily); }
+  deal();
   $('pOverlay').hidden = true; updatePackStats(); packSave();
+  if (P.daily) P.texts.push({ text: `오늘의 판 · ${P.daily.slice(5).replace('-', '/')}`, x: PW / 2, y: BY + PB * PC / 2, t: performance.now() + 200, color: tok('--accent', '#ffb547') });
 }
 const PACK_SAVE = 'brickpack-save';
 function packSave() {
   if (P.mode !== 'play') { dropKey(PACK_SAVE); return; }
-  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear });
+  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear, daily: P.daily, rs: P.rs });
 }
 // pick up a saved game; false if there is none (or it is unreadable)
 function packResume() {
   const s = loadJSON(PACK_SAVE);
   if (!s || !Array.isArray(s.grid) || s.grid.length !== PB || !Array.isArray(s.tray)) return false;
-  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0 });
+  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0, daily: s.daily || null, rs: s.rs | 0 });
   drag = null; $('pOverlay').hidden = true; updatePackStats();
   if (!P.tray.some(t => t && fitsAny(t))) packOver();
   return true;
 }
 function packOver() {
-  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE);
+  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE); recordGame('pack', P.score);
   if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
   else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
+  if (P.daily) $('pOvText').textContent += dailyLine('pack', P.daily, P.score);
   $('pOvScore').textContent = fmt(P.score);
   updatePackStats();
   setTimeout(() => { if (P.mode === 'over') $('pOverlay').hidden = false; }, 550);
 }
-$('pRestart').addEventListener('click', packStart);
+$('pRestart').addEventListener('click', () => packStart(P.daily === today()));
+$('pNew').addEventListener('click', () => packStart(false));
+$('pDaily').addEventListener('click', () => packStart(true));
 
 function place(i, r, c) {
   const p = P.tray[i], now = performance.now();
@@ -923,7 +1029,7 @@ function place(i, r, c) {
 function updatePackStats() {
   setText('pScore', P.score);
   setText('pBest', Math.max(pBest, P.score));
-  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : '');
+  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : P.daily ? '오늘의 판' : '');
 }
 
 // dragging
@@ -1069,6 +1175,7 @@ function addRow(animate) {
   const nl = 1 + Math.floor(Math.max(0, B.rows - START_ROWS) / ROWS_PER_LEVEL);
   if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); }
   B.dropT = dropEvery(B.level);
+  if (B.mode === 'play') brkSave();
 }
 function loadStage() {
   B.bricks = []; B.items = []; B.fx = [];
@@ -1085,13 +1192,29 @@ function launch() {
     b.vx = s * Math.sin(a); b.vy = -s * Math.cos(a); b.stuck = false;
   }
 }
-function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); }
+function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); brkSave(); }
+// saved on every pause and every new row; on return the ball waits on the paddle
+const BRK_SAVE = 'brickbreak-save';
+function brkSave() {
+  if (B.mode !== 'play' && B.mode !== 'pause') { dropKey(BRK_SAVE); return; }
+  saveJSON(BRK_SAVE, { level: B.level, rows: B.rows, dropT: B.dropT, score: B.score, lives: B.lives, px: B.px,
+    bricks: B.bricks.map(k => ({ x: k.x, y: k.y, hp: k.hp })) });
+}
+function brkResume() {
+  const s = loadJSON(BRK_SAVE);
+  if (!s || !Array.isArray(s.bricks)) return false;
+  B = brkFresh();
+  Object.assign(B, { level: +s.level || 1, rows: +s.rows || 0, dropT: +s.dropT || dropEvery(+s.level || 1), score: +s.score || 0,
+    lives: +s.lives || 1, px: +s.px || BW / 2, bricks: s.bricks.filter(k => k && k.hp > 0), mode: 'pause' });
+  resetBall();
+  return true;
+}
 function brkPause() {
   if (B.mode === 'play') B.mode = 'pause'; else if (B.mode === 'pause') B.mode = 'play';
-  B.keys.l = B.keys.r = false; brkOverlay();
+  B.keys.l = B.keys.r = false; brkOverlay(); brkSave();
 }
 function brkOver() {
-  B.mode = 'over'; sfx('over');
+  B.mode = 'over'; sfx('over'); dropKey(BRK_SAVE); recordGame('brk', B.score);
   if (B.score > bBest) { bBest = B.score; save('brickbreak-best', bBest); }
   brkOverlay();
 }
@@ -1115,6 +1238,7 @@ function brkOverlay() {
   }
 }
 $('bOvBtn').addEventListener('click', () => { if (B.mode === 'pause') brkPause(); else brkStart(); });
+brkResume();
 brkOverlay();
 
 function hitBrick(k) {
@@ -1200,7 +1324,7 @@ function updateBrk(dt) {
   if (!B.balls.length) {
     B.lives--;
     if (B.lives <= 0) { B.reason = '목숨을 모두 잃었어요.'; brkOver(); return; }
-    resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose');
+    resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose'); brkSave();
   }
   for (const it of B.items) {
     it.y += 150 * s;
@@ -1309,7 +1433,7 @@ function spawnMov() {
 }
 function stkStart() { T = stkFresh(); T.mode = 'play'; spawnMov(); $('tOverlay').hidden = true; }
 function stkOver() {
-  T.mode = 'over'; T.mov = null; sfx('over');
+  T.mode = 'over'; T.mov = null; sfx('over'); recordGame('stk', T.score);
   const rec = T.score > tBest;
   if (rec) { tBest = T.score; save('brickstack-best', tBest); }
   $('tOvText').textContent = rec && T.score > 0 ? '새 최고 기록입니다.' : '벽돌이 아래 벽돌을 벗어났어요.';
@@ -1459,28 +1583,32 @@ let PO = null, oHover = null, oid = 0;
 // cols[c] holds cells bottom-to-top; each cell keeps its own drawn position (vx, vy) that eases to its slot
 const oSlotX = c => OX + c * OS, oSlotY = i => OY + (OR - 1 - i) * OS;
 const popColors = () => PO.level >= 3 ? [...POP_COLORS, POP_EXTRA] : POP_COLORS;
-function popRandRow() { const cs = popColors(); return Array.from({ length: OC }, () => cs[Math.floor(Math.random() * cs.length)]); }
-function popNew() {
-  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [], level: 1, rows: 0, movesLeft: riseEvery(1), next: null };
+// the daily board ("오늘의 판") uses a random sequence seeded by the date, so everyone gets the same board that day
+const popRand = () => PO.daily ? rngNext(PO) : Math.random();
+function popRandRow() { const cs = popColors(); return Array.from({ length: OC }, () => cs[Math.floor(popRand() * cs.length)]); }
+function popNew(daily) {
+  const d = daily === true ? today() : null;
+  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [], level: 1, rows: 0, movesLeft: riseEvery(1), next: null, daily: d, rs: d ? seedOf('pop' + d) : 0 };
   for (let c = 0; c < OC; c++) {
     const col = [];
     for (let i = 0; i < POP_START_ROWS; i++)
-      col.push({ id: oid++, color: POP_COLORS[Math.floor(Math.random() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
+      col.push({ id: oid++, color: POP_COLORS[Math.floor(popRand() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
     PO.cols.push(col);
   }
   PO.next = popRandRow();
   oHover = null; $('oOverlay').hidden = true; popStats(); popSave();
+  if (d) PO.texts.push({ text: `오늘의 판 · ${d.slice(5).replace('-', '/')}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() + 300 });
 }
 const POP_SAVE = 'brickpop-save';
 function popSave() {
   if (PO.mode !== 'play') { dropKey(POP_SAVE); return; }
-  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next });
+  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next, daily: PO.daily, rs: PO.rs });
 }
 function popResume() {
   const s = loadJSON(POP_SAVE);
   if (!s || !Array.isArray(s.cols) || !Array.isArray(s.next) || s.next.length !== OC) return false;
   PO = { cols: [], score: +s.score || 0, mode: 'play', fx: [], texts: [], level: +s.level || 1, rows: +s.rows || 0,
-    movesLeft: +s.movesLeft || 1, next: s.next };
+    movesLeft: +s.movesLeft || 1, next: s.next, daily: s.daily || null, rs: s.rs | 0 };
   PO.cols = s.cols.filter(col => Array.isArray(col) && col.length).slice(0, OC)
     .map((col, c) => col.map((color, i) => ({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 })));
   oHover = null; $('oOverlay').hidden = true; popStats();
@@ -1547,16 +1675,16 @@ function popAt(c, i) {
   popStats(); popSave();
 }
 function popOver() {
-  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE);
+  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE); recordGame('pop', PO.score);
   const rec = PO.score > oBest;
   if (rec) { oBest = PO.score; save('brickpop-best', oBest); }
-  $('oOvTitle').textContent = '게임 오버';
-  $('oOvText').textContent = `벽돌이 맨 위를 넘었어요. 레벨 ${PO.level}까지 왔어요.` + (rec ? ' 새 최고 기록입니다.' : '');
+  $('oOvTitle').textContent = PO.daily ? '오늘의 판 끝' : '게임 오버';
+  $('oOvText').textContent = `벽돌이 맨 위를 넘었어요. 레벨 ${PO.level}까지 왔어요.` + (rec ? ' 새 최고 기록입니다.' : '') + (PO.daily ? dailyLine('pop', PO.daily, PO.score) : '');
   $('oOvScore').textContent = fmt(PO.score);
   setTimeout(() => { if (PO.mode === 'over') $('oOverlay').hidden = false; }, 700);
 }
 function popStats() {
-  setText('oScore', PO.score); setText('oLevel', PO.level); setText('oNext', `${PO.movesLeft}번`); setText('oBest', Math.max(oBest, PO.score));
+  setText('oScore', PO.score); setText('oLevel', PO.daily ? `${PO.level} · 오늘` : PO.level); setText('oNext', `${PO.movesLeft}번`); setText('oBest', Math.max(oBest, PO.score));
   const n = oHover ? oHover.length : 0;
   setText('oPreview', n >= 2 ? `${n}개 · +${fmt(popPts(n))}` : '');
 }
@@ -1579,8 +1707,9 @@ ocv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') { const a2 = popCell(e); const g = a2 ? popGroup(a2[0], a2[1]) : []; oHover = g.length >= 2 ? g : null; popStats(); }
 });
 ocv.addEventListener('contextmenu', e => e.preventDefault());
-$('oRestart').addEventListener('click', popNew);
-$('oNew').addEventListener('click', popNew);
+$('oRestart').addEventListener('click', () => popNew(PO.daily === today()));
+$('oNew').addEventListener('click', () => popNew(false));
+$('oDaily').addEventListener('click', () => popNew(true));
 
 function updatePop(dt) {
   const s = dt / 1000, v = 1300 * s;
@@ -1727,7 +1856,7 @@ function sldCheck() {
   else sldSave();
 }
 function sldOver() {
-  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE);
+  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE); recordGame('sld', SL.score);
   const rec = SL.score > lBest;
   if (rec) { lBest = SL.score; save('brickslide-best', lBest); }
   $('lOvText').textContent = `벽돌이 맨 위를 넘었어요. 지운 줄 ${SL.lines}개.` + (rec ? ' 새 최고 기록입니다.' : '');
@@ -1847,8 +1976,9 @@ function artSld() {
 artPop(); artSld();
 
 // ================= settings: theme + volume =================
-let settings = { skin: 'dark', vol: 70, vibe: true };
+let settings = { skin: 'dark', vol: 70, vibe: true, marks: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
+MARKS = !!settings.marks;
 const saveSettings = () => { try { localStorage.setItem('brick-settings', JSON.stringify(settings)); } catch (e) {} };
 
 function refreshTheme() {
@@ -1934,6 +2064,7 @@ function syncSettingsUI() {
   for (const r of document.querySelectorAll('input[name="skin"]')) r.checked = r.value === settings.skin;
   $('volRange').value = settings.vol; $('volVal').textContent = settings.vol;
   for (const r of document.querySelectorAll('input[name="vibe"]')) { r.checked = (r.value === 'on') === (settings.vibe && canVibe); r.disabled = !canVibe; }
+  for (const r of document.querySelectorAll('input[name="marks"]')) r.checked = (r.value === 'on') === !!settings.marks;
   if (!canVibe) $('vibeNote').textContent = '이 기기나 브라우저는 진동을 지원하지 않아요.';
 }
 function openSettings(btn) {
@@ -1950,6 +2081,9 @@ $('closeSettings').addEventListener('click', closeSettings);
 sheet.addEventListener('pointerdown', e => { if (e.target === sheet) closeSettings(); });
 for (const r of document.querySelectorAll('input[name="skin"]')) r.addEventListener('change', () => {
   if (!r.checked) return; settings.skin = r.value; saveSettings(); applySkin();
+});
+for (const r of document.querySelectorAll('input[name="marks"]')) r.addEventListener('change', () => {
+  if (!r.checked) return; settings.marks = MARKS = r.value === 'on'; saveSettings(); refreshTheme();
 });
 for (const r of document.querySelectorAll('input[name="vibe"]')) r.addEventListener('change', () => {
   if (!r.checked) return; settings.vibe = r.value === 'on'; saveSettings();
@@ -1972,6 +2106,152 @@ window.brickUpdateReady = () => { $('updToast').hidden = false; };
 $('updBtn').addEventListener('click', () => location.reload());
 $('updLater').addEventListener('click', () => { $('updToast').hidden = true; });
 
+// ================= stats, record transfer, daily results, how-to-play =================
+const GAMES = [
+  { id: 'fall', name: 'BRICKFALL', best: () => best, unit: '' },
+  { id: 'pack', name: 'BRICKPACK', best: () => pBest, unit: '' },
+  { id: 'brk', name: 'BRICKBREAK', best: () => bBest, unit: '' },
+  { id: 'stk', name: 'BRICKSTACK', best: () => tBest, unit: '층' },
+  { id: 'pop', name: 'BRICKPOP', best: () => oBest, unit: '' },
+  { id: 'sld', name: 'BRICKSLIDE', best: () => lBest, unit: '' },
+];
+const STATS_KEY = 'brick-stats';
+
+// every finished game: count it, keep the last 10 scores and the day of the highest one
+function recordGame(id, score) {
+  const all = loadJSON(STATS_KEY) || {};
+  const g = all[id] || { n: 0, total: 0, hi: 0, hiAt: '', recent: [] };
+  g.n++; g.total += score;
+  if (score > g.hi) { g.hi = score; g.hiAt = today(); }
+  g.recent = [...(g.recent || []), score].slice(-10);
+  all[id] = g; saveJSON(STATS_KEY, all);
+}
+
+// daily board: best score for today's board, shown at game over
+function dailyLine(id, day, score) {
+  const key = `brick-daily-${id}`, d = loadJSON(key);
+  const prev = d && d.day === day ? d.best : 0;
+  if (score > prev) saveJSON(key, { day, best: score });
+  return score > prev && prev > 0 ? ` 오늘의 판 최고 기록이에요.` : ` 오늘의 판 최고 ${fmt(Math.max(prev, score))}점.`;
+}
+
+function renderStats() {
+  const all = loadJSON(STATS_KEY) || {}, list = $('statsList');
+  list.textContent = '';
+  for (const gm of GAMES) {
+    const g = all[gm.id] || { n: 0, total: 0, hi: 0, hiAt: '', recent: [] };
+    const bestScore = Math.max(gm.best(), g.hi);
+    const card = document.createElement('div'); card.className = 'st-card';
+    const h = document.createElement('h3'); h.textContent = gm.name; card.append(h);
+    const nums = document.createElement('div'); nums.className = 'st-nums';
+    const num = (label, v) => { const s = document.createElement('span'); s.textContent = label; const b = document.createElement('b'); b.textContent = v; s.append(b); nums.append(s); };
+    num('최고', fmt(bestScore) + gm.unit);
+    num('판 수', fmt(g.n));
+    num('평균', g.n ? fmt(Math.round(g.total / g.n)) + gm.unit : '—');
+    card.append(nums);
+    const recent = g.recent || [];
+    if (recent.length) {
+      const bars = document.createElement('div'); bars.className = 'st-bars';
+      bars.setAttribute('aria-label', `최근 ${recent.length}판 점수: ${recent.map(fmt).join(', ')}`);
+      const top = Math.max(1, ...recent);
+      for (const v of recent) { const i = document.createElement('i'); i.style.height = `${Math.max(4, v / top * 100)}%`; i.title = fmt(v); bars.append(i); }
+      card.append(bars);
+    }
+    const foot = document.createElement('div'); foot.className = 'st-foot';
+    foot.textContent = !g.n ? '아직 끝낸 판이 없어요.'
+      : `최근 ${recent.length}판` + (g.hiAt && g.hi >= bestScore ? ` · 최고 기록 ${g.hiAt.replace(/-/g, '.')}` : '');
+    card.append(foot);
+    list.append(card);
+  }
+}
+$('goStats').addEventListener('click', () => show('stats'));
+
+// ---- record transfer: every "brick…" key in this browser, packed into one code
+const xPack = obj => 'BA1.' + btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+const xUnpack = code => {
+  const m = /^BA1\.([A-Za-z0-9+/=\s]+)$/.exec(code.trim());
+  if (!m) return null;
+  try { const o = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/\s/g, ''))))); return o && typeof o === 'object' ? o : null; } catch (e) { return null; }
+};
+function brickKeys() {
+  const out = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('brick')) out[k] = localStorage.getItem(k); } } catch (e) {}
+  return out;
+}
+$('xExport').addEventListener('click', () => {
+  $('xIn').hidden = true; $('xOut').hidden = false;
+  $('xCode').value = xPack(brickKeys()); $('xMsg').textContent = '';
+  $('xCode').focus(); $('xCode').select();
+});
+$('xCopy').addEventListener('click', async () => {
+  const t = $('xCode');
+  try { await navigator.clipboard.writeText(t.value); $('xMsg').textContent = '복사했어요.'; }
+  catch (e) { t.focus(); t.select(); $('xMsg').textContent = '선택해 뒀어요. 길게 눌러 복사하세요.'; }
+});
+$('xImportOpen').addEventListener('click', () => {
+  $('xOut').hidden = true; $('xIn').hidden = false; $('xInMsg').textContent = ''; $('xPaste').focus();
+});
+$('xImport').addEventListener('click', () => {
+  const data = xUnpack($('xPaste').value);
+  const keys = data ? Object.keys(data).filter(k => k.startsWith('brick') && typeof data[k] === 'string') : [];
+  if (!keys.length) { $('xInMsg').textContent = '코드를 읽지 못했어요. 처음부터 끝까지 그대로 붙여 넣었는지 확인하세요.'; return; }
+  if (!confirm('지금 이 기기의 기록이 코드의 기록으로 바뀌어요. 계속할까요?')) return;
+  try {
+    for (const k of Object.keys(brickKeys())) localStorage.removeItem(k);
+    for (const k of keys) localStorage.setItem(k, data[k]);
+  } catch (e) { $('xInMsg').textContent = '저장하지 못했어요. 브라우저 저장 공간을 확인하세요.'; return; }
+  location.hash = 'stats'; location.reload();
+});
+
+// ---- how to play: shown the first time each game opens, and from the ? button
+const INTRO = {
+  fall: ['떨어지는 블록을 옮기고 돌려서 가로줄을 꽉 채우면 줄이 지워져요.',
+    '키보드: ← → 이동, ↑ 회전, ↓ 천천히 내리기, Space 바로 떨어뜨리기, C 보관, P 일시정지.',
+    '휴대폰: 화면 아래 버튼으로 조작해요.', '10줄마다 레벨이 오르고 빨라져요. 블록이 맨 위에 닿으면 끝나요.'],
+  pack: ['아래 조각 3개를 끌어서 8×8 판에 놓아요. 조각은 돌릴 수 없어요.',
+    '가로줄이나 세로줄을 꽉 채우면 지워지고, 여러 줄을 한 번에 지우거나 연달아 지우면 점수가 커져요.',
+    '어떤 조각도 놓을 수 없으면 끝나요. 시간 제한은 없어요.', '오늘의 판은 하루 동안 모두에게 같은 조각이 나와요.'],
+  brk: ['패들을 움직여 공을 튕기고 벽돌을 깨요. 키보드 ← →, 또는 화면을 끌어서 움직여요.',
+    'Space나 탭으로 공을 발사해요. 노랑·빨강 벽돌은 여러 번 맞혀야 해요.',
+    '벽돌 벽이 몇 초마다 한 줄씩 내려와요. 빨간 선에 닿거나 목숨을 다 잃으면 끝나요.', '떨어지는 아이템을 받으면 패들이 넓어지거나 공이 늘어나요.'],
+  stk: ['좌우로 움직이는 벽돌을 탭(또는 Space)해서 아래 벽돌 위에 떨어뜨려요.',
+    '삐져나온 부분은 잘려 나가서 벽돌이 점점 좁아져요.', '딱 맞추면 퍼펙트! 3번 연속이면 벽돌이 다시 넓어져요.'],
+  pop: ['같은 색이 2개 이상 붙은 덩어리를 누르면 터져요. n개를 터뜨리면 (n−2)²점이라 크게 모을수록 좋아요.',
+    '몇 번 터뜨릴 때마다 아래에서 새 줄이 올라와요. 판 아래 색 띠가 다음 줄이에요.',
+    '벽돌이 맨 위를 넘으면 끝나요. 판을 다 비우면 1,000점 보너스.', '오늘의 판은 하루 동안 모두에게 같은 판이 나와요.'],
+  sld: ['가로 벽돌을 좌우로 끌어서 옮겨요. 아래가 비어 있으면 떨어져요.',
+    '가로줄을 꽉 채우면 지워지고, 연달아 지우면 점수가 커져요.',
+    '한 번 옮길 때마다 아래에서 새 줄이 올라와요. 벽돌이 맨 위를 넘으면 끝나요.'],
+};
+const INTRO_KEY = 'brick-intro-seen';
+const intro = $('intro');
+let introOpener = null;
+function pauseCurrent() {
+  if (current === 'fall' && S.mode === 'play') togglePause();
+  if (current === 'brk' && B.mode === 'play') brkPause();
+  if (current === 'stk') stkPause();
+}
+function openIntro(id, btn) {
+  const lines = INTRO[id]; if (!lines) return;
+  pauseCurrent();
+  introOpener = btn || null;
+  $('introTitle').textContent = (GAMES.find(g => g.id === id) || {}).name || '';
+  const ul = $('introList'); ul.textContent = '';
+  for (const l of lines) { const li = document.createElement('li'); li.textContent = l; ul.append(li); }
+  intro.hidden = false; $('introGo').focus();
+  const seen = loadJSON(INTRO_KEY) || [];
+  if (!seen.includes(id)) saveJSON(INTRO_KEY, [...seen, id]);
+}
+function closeIntro() { intro.hidden = true; if (introOpener) introOpener.focus(); introOpener = null; }
+function maybeIntro(id) { if (INTRO[id] && !(loadJSON(INTRO_KEY) || []).includes(id)) openIntro(id); }
+$('introGo').addEventListener('click', closeIntro);
+intro.addEventListener('pointerdown', e => { if (e.target === intro) closeIntro(); });
+document.querySelectorAll('[data-help]').forEach(b => b.addEventListener('click', () => openIntro(current, b)));
+addEventListener('keydown', e => {
+  if (intro.hidden) return;
+  if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeIntro(); }
+  e.stopImmediatePropagation();
+}, true);
 // ================= loop & boot =================
 let last = 0;
 function frame(t) {
@@ -1987,6 +2267,7 @@ function frame(t) {
 function boot(data) {
   S = fresh();
   if (data && data.S && data.S.board) { Object.assign(S, data.S); if (S.mode === 'play') S.mode = 'pause'; }
+  else fallResume();
   if (data && data.P && data.P.grid) { P = Object.assign(packFresh(), data.P, { fx: [], texts: [] }); updatePackStats(); if (P.mode === 'over') packOver(); }
   else if (!packResume()) packStart();
   showOverlay();

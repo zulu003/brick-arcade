@@ -13,28 +13,32 @@ let PO = null, oHover = null, oid = 0;
 // cols[c] holds cells bottom-to-top; each cell keeps its own drawn position (vx, vy) that eases to its slot
 const oSlotX = c => OX + c * OS, oSlotY = i => OY + (OR - 1 - i) * OS;
 const popColors = () => PO.level >= 3 ? [...POP_COLORS, POP_EXTRA] : POP_COLORS;
-function popRandRow() { const cs = popColors(); return Array.from({ length: OC }, () => cs[Math.floor(Math.random() * cs.length)]); }
-function popNew() {
-  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [], level: 1, rows: 0, movesLeft: riseEvery(1), next: null };
+// the daily board ("오늘의 판") uses a random sequence seeded by the date, so everyone gets the same board that day
+const popRand = () => PO.daily ? rngNext(PO) : Math.random();
+function popRandRow() { const cs = popColors(); return Array.from({ length: OC }, () => cs[Math.floor(popRand() * cs.length)]); }
+function popNew(daily) {
+  const d = daily === true ? today() : null;
+  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [], level: 1, rows: 0, movesLeft: riseEvery(1), next: null, daily: d, rs: d ? seedOf('pop' + d) : 0 };
   for (let c = 0; c < OC; c++) {
     const col = [];
     for (let i = 0; i < POP_START_ROWS; i++)
-      col.push({ id: oid++, color: POP_COLORS[Math.floor(Math.random() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
+      col.push({ id: oid++, color: POP_COLORS[Math.floor(popRand() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
     PO.cols.push(col);
   }
   PO.next = popRandRow();
   oHover = null; $('oOverlay').hidden = true; popStats(); popSave();
+  if (d) PO.texts.push({ text: `오늘의 판 · ${d.slice(5).replace('-', '/')}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() + 300 });
 }
 const POP_SAVE = 'brickpop-save';
 function popSave() {
   if (PO.mode !== 'play') { dropKey(POP_SAVE); return; }
-  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next });
+  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next, daily: PO.daily, rs: PO.rs });
 }
 function popResume() {
   const s = loadJSON(POP_SAVE);
   if (!s || !Array.isArray(s.cols) || !Array.isArray(s.next) || s.next.length !== OC) return false;
   PO = { cols: [], score: +s.score || 0, mode: 'play', fx: [], texts: [], level: +s.level || 1, rows: +s.rows || 0,
-    movesLeft: +s.movesLeft || 1, next: s.next };
+    movesLeft: +s.movesLeft || 1, next: s.next, daily: s.daily || null, rs: s.rs | 0 };
   PO.cols = s.cols.filter(col => Array.isArray(col) && col.length).slice(0, OC)
     .map((col, c) => col.map((color, i) => ({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 })));
   oHover = null; $('oOverlay').hidden = true; popStats();
@@ -101,16 +105,16 @@ function popAt(c, i) {
   popStats(); popSave();
 }
 function popOver() {
-  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE);
+  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE); recordGame('pop', PO.score);
   const rec = PO.score > oBest;
   if (rec) { oBest = PO.score; save('brickpop-best', oBest); }
-  $('oOvTitle').textContent = '게임 오버';
-  $('oOvText').textContent = `벽돌이 맨 위를 넘었어요. 레벨 ${PO.level}까지 왔어요.` + (rec ? ' 새 최고 기록입니다.' : '');
+  $('oOvTitle').textContent = PO.daily ? '오늘의 판 끝' : '게임 오버';
+  $('oOvText').textContent = `벽돌이 맨 위를 넘었어요. 레벨 ${PO.level}까지 왔어요.` + (rec ? ' 새 최고 기록입니다.' : '') + (PO.daily ? dailyLine('pop', PO.daily, PO.score) : '');
   $('oOvScore').textContent = fmt(PO.score);
   setTimeout(() => { if (PO.mode === 'over') $('oOverlay').hidden = false; }, 700);
 }
 function popStats() {
-  setText('oScore', PO.score); setText('oLevel', PO.level); setText('oNext', `${PO.movesLeft}번`); setText('oBest', Math.max(oBest, PO.score));
+  setText('oScore', PO.score); setText('oLevel', PO.daily ? `${PO.level} · 오늘` : PO.level); setText('oNext', `${PO.movesLeft}번`); setText('oBest', Math.max(oBest, PO.score));
   const n = oHover ? oHover.length : 0;
   setText('oPreview', n >= 2 ? `${n}개 · +${fmt(popPts(n))}` : '');
 }
@@ -133,8 +137,9 @@ ocv.addEventListener('pointerdown', e => {
   if (e.pointerType === 'mouse') { const a2 = popCell(e); const g = a2 ? popGroup(a2[0], a2[1]) : []; oHover = g.length >= 2 ? g : null; popStats(); }
 });
 ocv.addEventListener('contextmenu', e => e.preventDefault());
-$('oRestart').addEventListener('click', popNew);
-$('oNew').addEventListener('click', popNew);
+$('oRestart').addEventListener('click', () => popNew(PO.daily === today()));
+$('oNew').addEventListener('click', () => popNew(false));
+$('oDaily').addEventListener('click', () => popNew(true));
 
 function updatePop(dt) {
   const s = dt / 1000, v = 1300 * s;

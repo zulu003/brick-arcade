@@ -18,7 +18,7 @@ function spawnMov() {
 }
 function stkStart() { T = stkFresh(); T.mode = 'play'; spawnMov(); $('tOverlay').hidden = true; }
 function stkOver() {
-  T.mode = 'over'; T.mov = null; sfx('over');
+  T.mode = 'over'; T.mov = null; sfx('over'); recordGame('stk', T.score);
   const rec = T.score > tBest;
   if (rec) { tBest = T.score; save('brickstack-best', tBest); }
   $('tOvText').textContent = rec && T.score > 0 ? '새 최고 기록입니다.' : '벽돌이 아래 벽돌을 벗어났어요.';

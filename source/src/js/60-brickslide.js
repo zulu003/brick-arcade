@@ -98,7 +98,7 @@ function sldCheck() {
   else sldSave();
 }
 function sldOver() {
-  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE);
+  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE); recordGame('sld', SL.score);
   const rec = SL.score > lBest;
   if (rec) { lBest = SL.score; save('brickslide-best', lBest); }
   $('lOvText').textContent = `벽돌이 맨 위를 넘었어요. 지운 줄 ${SL.lines}개.` + (rec ? ' 새 최고 기록입니다.' : '');

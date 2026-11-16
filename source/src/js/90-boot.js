@@ -13,6 +13,7 @@ function frame(t) {
 function boot(data) {
   S = fresh();
   if (data && data.S && data.S.board) { Object.assign(S, data.S); if (S.mode === 'play') S.mode = 'pause'; }
+  else fallResume();
   if (data && data.P && data.P.grid) { P = Object.assign(packFresh(), data.P, { fx: [], texts: [] }); updatePackStats(); if (P.mode === 'over') packOver(); }
   else if (!packResume()) packStart();
   showOverlay();

@@ -97,6 +97,7 @@ function lock() {
   for (let r = 0; r < ROWS; r++) if (S.board[r].every(Boolean)) full.push(r);
   if (full.length) { S.clearing = full; S.clearT = 0; sfx('clear', full.length); }
   else { sfx('lock'); spawn(nextType()); S.canHold = true; }
+  fallSave();
 }
 function finishClear() {
   const n = S.clearing.length;
@@ -107,19 +108,33 @@ function finishClear() {
   S.level = Math.floor(S.lines / 10) + 1;
   S.clearing = null;
   spawn(nextType()); S.canHold = true;
+  fallSave();
 }
 const gravityMs = lv => Math.max(8, Math.pow(Math.max(0.8 - (lv - 1) * 0.007, 0.05), lv - 1) * 1000);
 
-function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); }
+function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); fallSave(); }
+// the game in progress is saved on every lock and pause, and comes back paused
+const FALL_SAVE = 'brickfall-save';
+function fallSave() {
+  if (S.mode !== 'play' && S.mode !== 'pause') { dropKey(FALL_SAVE); return; }
+  saveJSON(FALL_SAVE, Object.assign({}, S, { mode: 'pause', clearing: null }));
+}
+function fallResume() {
+  const s = loadJSON(FALL_SAVE);
+  if (!s || !Array.isArray(s.board) || s.board.length !== ROWS || !Array.isArray(s.queue)) return false;
+  S = Object.assign(fresh(), s, { mode: 'pause', clearing: null });
+  if (!S.cur) spawn(nextType());
+  return true;
+}
 function gameOver() {
-  S.mode = 'over'; S.cur = null; sfx('over');
+  S.mode = 'over'; S.cur = null; sfx('over'); dropKey(FALL_SAVE); recordGame('fall', S.score);
   if (S.score > best) { best = S.score; save('brickfall-best', best); }
   showOverlay();
 }
 function togglePause() {
   if (S.mode === 'play') S.mode = 'pause';
   else if (S.mode === 'pause') S.mode = 'play';
-  releaseAll(); showOverlay();
+  releaseAll(); showOverlay(); fallSave();
 }
 
 const ov = $('overlay'), ovTitle = $('ovTitle'), ovText = $('ovText'), ovScore = $('ovScore'), ovBtn = $('ovBtn');

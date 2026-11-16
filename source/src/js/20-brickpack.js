@@ -24,13 +24,15 @@ let pBest = load('brickpack-best');
 let P, drag = null;
 function packFresh() {
   const p = { grid: Array.from({length: PB}, () => Array(PB).fill(null)), tray: [null, null, null],
-    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [] };
+    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [], daily: null, rs: 0 };
   return p;
 }
+// daily board: pieces come from a sequence seeded by the date
+const packRand = () => P.daily ? rngNext(P) : Math.random();
 function randPiece() {
-  let k = Math.random() * TOTAL_W, pick = PIECES[0];
+  let k = packRand() * TOTAL_W, pick = PIECES[0];
   for (const p of PIECES) { k -= p.weight; if (k < 0) { pick = p; break; } }
-  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(Math.random() * PALETTE.length)] };
+  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(packRand() * PALETTE.length)] };
 }
 function fitsAt(p, r, c) {
   for (const [dy, dx] of p.cells) {
@@ -49,33 +51,39 @@ function deal() {
     if (set.some(fitsAny) || t === 39) { P.tray = set; return; }
   }
 }
-function packStart() {
-  P = packFresh(); drag = null; deal();
+function packStart(daily) {
+  P = packFresh(); drag = null;
+  if (daily === true) { P.daily = today(); P.rs = seedOf('pack' + P.daily); }
+  deal();
   $('pOverlay').hidden = true; updatePackStats(); packSave();
+  if (P.daily) P.texts.push({ text: `오늘의 판 · ${P.daily.slice(5).replace('-', '/')}`, x: PW / 2, y: BY + PB * PC / 2, t: performance.now() + 200, color: tok('--accent', '#ffb547') });
 }
 const PACK_SAVE = 'brickpack-save';
 function packSave() {
   if (P.mode !== 'play') { dropKey(PACK_SAVE); return; }
-  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear });
+  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear, daily: P.daily, rs: P.rs });
 }
 // pick up a saved game; false if there is none (or it is unreadable)
 function packResume() {
   const s = loadJSON(PACK_SAVE);
   if (!s || !Array.isArray(s.grid) || s.grid.length !== PB || !Array.isArray(s.tray)) return false;
-  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0 });
+  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0, daily: s.daily || null, rs: s.rs | 0 });
   drag = null; $('pOverlay').hidden = true; updatePackStats();
   if (!P.tray.some(t => t && fitsAny(t))) packOver();
   return true;
 }
 function packOver() {
-  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE);
+  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE); recordGame('pack', P.score);
   if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
   else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
+  if (P.daily) $('pOvText').textContent += dailyLine('pack', P.daily, P.score);
   $('pOvScore').textContent = fmt(P.score);
   updatePackStats();
   setTimeout(() => { if (P.mode === 'over') $('pOverlay').hidden = false; }, 550);
 }
-$('pRestart').addEventListener('click', packStart);
+$('pRestart').addEventListener('click', () => packStart(P.daily === today()));
+$('pNew').addEventListener('click', () => packStart(false));
+$('pDaily').addEventListener('click', () => packStart(true));
 
 function place(i, r, c) {
   const p = P.tray[i], now = performance.now();
@@ -122,7 +130,7 @@ function place(i, r, c) {
 function updatePackStats() {
   setText('pScore', P.score);
   setText('pBest', Math.max(pBest, P.score));
-  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : '');
+  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : P.daily ? '오늘의 판' : '');
 }
 
 // dragging

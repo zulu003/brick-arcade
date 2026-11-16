@@ -1,6 +1,7 @@
 // ================= settings: theme + volume =================
-let settings = { skin: 'dark', vol: 70, vibe: true };
+let settings = { skin: 'dark', vol: 70, vibe: true, marks: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
+MARKS = !!settings.marks;
 const saveSettings = () => { try { localStorage.setItem('brick-settings', JSON.stringify(settings)); } catch (e) {} };
 
 function refreshTheme() {
@@ -86,6 +87,7 @@ function syncSettingsUI() {
   for (const r of document.querySelectorAll('input[name="skin"]')) r.checked = r.value === settings.skin;
   $('volRange').value = settings.vol; $('volVal').textContent = settings.vol;
   for (const r of document.querySelectorAll('input[name="vibe"]')) { r.checked = (r.value === 'on') === (settings.vibe && canVibe); r.disabled = !canVibe; }
+  for (const r of document.querySelectorAll('input[name="marks"]')) r.checked = (r.value === 'on') === !!settings.marks;
   if (!canVibe) $('vibeNote').textContent = '이 기기나 브라우저는 진동을 지원하지 않아요.';
 }
 function openSettings(btn) {
@@ -102,6 +104,9 @@ $('closeSettings').addEventListener('click', closeSettings);
 sheet.addEventListener('pointerdown', e => { if (e.target === sheet) closeSettings(); });
 for (const r of document.querySelectorAll('input[name="skin"]')) r.addEventListener('change', () => {
   if (!r.checked) return; settings.skin = r.value; saveSettings(); applySkin();
+});
+for (const r of document.querySelectorAll('input[name="marks"]')) r.addEventListener('change', () => {
+  if (!r.checked) return; settings.marks = MARKS = r.value === 'on'; saveSettings(); refreshTheme();
 });
 for (const r of document.querySelectorAll('input[name="vibe"]')) r.addEventListener('change', () => {
   if (!r.checked) return; settings.vibe = r.value === 'on'; saveSettings();

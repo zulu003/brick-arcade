@@ -36,6 +36,7 @@ function addRow(animate) {
   const nl = 1 + Math.floor(Math.max(0, B.rows - START_ROWS) / ROWS_PER_LEVEL);
   if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); }
   B.dropT = dropEvery(B.level);
+  if (B.mode === 'play') brkSave();
 }
 function loadStage() {
   B.bricks = []; B.items = []; B.fx = [];
@@ -52,13 +53,29 @@ function launch() {
     b.vx = s * Math.sin(a); b.vy = -s * Math.cos(a); b.stuck = false;
   }
 }
-function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); }
+function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); brkSave(); }
+// saved on every pause and every new row; on return the ball waits on the paddle
+const BRK_SAVE = 'brickbreak-save';
+function brkSave() {
+  if (B.mode !== 'play' && B.mode !== 'pause') { dropKey(BRK_SAVE); return; }
+  saveJSON(BRK_SAVE, { level: B.level, rows: B.rows, dropT: B.dropT, score: B.score, lives: B.lives, px: B.px,
+    bricks: B.bricks.map(k => ({ x: k.x, y: k.y, hp: k.hp })) });
+}
+function brkResume() {
+  const s = loadJSON(BRK_SAVE);
+  if (!s || !Array.isArray(s.bricks)) return false;
+  B = brkFresh();
+  Object.assign(B, { level: +s.level || 1, rows: +s.rows || 0, dropT: +s.dropT || dropEvery(+s.level || 1), score: +s.score || 0,
+    lives: +s.lives || 1, px: +s.px || BW / 2, bricks: s.bricks.filter(k => k && k.hp > 0), mode: 'pause' });
+  resetBall();
+  return true;
+}
 function brkPause() {
   if (B.mode === 'play') B.mode = 'pause'; else if (B.mode === 'pause') B.mode = 'play';
-  B.keys.l = B.keys.r = false; brkOverlay();
+  B.keys.l = B.keys.r = false; brkOverlay(); brkSave();
 }
 function brkOver() {
-  B.mode = 'over'; sfx('over');
+  B.mode = 'over'; sfx('over'); dropKey(BRK_SAVE); recordGame('brk', B.score);
   if (B.score > bBest) { bBest = B.score; save('brickbreak-best', bBest); }
   brkOverlay();
 }
@@ -82,6 +99,7 @@ function brkOverlay() {
   }
 }
 $('bOvBtn').addEventListener('click', () => { if (B.mode === 'pause') brkPause(); else brkStart(); });
+brkResume();
 brkOverlay();
 
 function hitBrick(k) {
@@ -167,7 +185,7 @@ function updateBrk(dt) {
   if (!B.balls.length) {
     B.lives--;
     if (B.lives <= 0) { B.reason = '목숨을 모두 잃었어요.'; brkOver(); return; }
-    resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose');
+    resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose'); brkSave();
   }
   for (const it of B.items) {
     it.y += 150 * s;

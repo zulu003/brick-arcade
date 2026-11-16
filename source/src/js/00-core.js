@@ -13,6 +13,32 @@ const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {
 const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
 const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 const dropKey = k => { try { localStorage.removeItem(k); } catch (e) {} };
+// local date as YYYY-MM-DD (for the daily board and the stats screen)
+const today = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// seeded random for the daily board: the state lives in o.rs so it can be saved and resumed
+function seedOf(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h | 0; }
+function rngNext(o) {
+  o.rs = (o.rs + 0x6D2B79F5) | 0;
+  let t = o.rs; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+
+// colour-blind help: a small shape on each block colour (Settings → 블록 무늬)
+let MARKS = false;
+const MARK_OF = { '#ef6670': 'circle', '#f4cc4a': 'tri', '#5c86f2': 'square', '#6ccf86': 'diamond', '#b47cf2': 'plus', '#56cfe1': 'ring', '#f39b4a': 'x' };
+function drawMark(c, x, y, s, color) {
+  const kind = MARK_OF[color]; if (!kind || s < 14) return;
+  const cx = x + s / 2, cy = y + s / 2, r = s * .19;
+  c.fillStyle = 'rgba(20,16,36,.42)'; c.strokeStyle = 'rgba(20,16,36,.42)'; c.lineWidth = Math.max(2, s * .08);
+  c.beginPath();
+  if (kind === 'circle') { c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); }
+  else if (kind === 'ring') { c.arc(cx, cy, r * .85, 0, Math.PI * 2); c.stroke(); }
+  else if (kind === 'square') { c.fillRect(cx - r * .9, cy - r * .9, r * 1.8, r * 1.8); }
+  else if (kind === 'tri') { c.moveTo(cx, cy - r * 1.1); c.lineTo(cx + r * 1.1, cy + r * .85); c.lineTo(cx - r * 1.1, cy + r * .85); c.closePath(); c.fill(); }
+  else if (kind === 'diamond') { c.moveTo(cx, cy - r * 1.2); c.lineTo(cx + r, cy); c.lineTo(cx, cy + r * 1.2); c.lineTo(cx - r, cy); c.closePath(); c.fill(); }
+  else if (kind === 'plus') { c.moveTo(cx - r, cy); c.lineTo(cx + r, cy); c.moveTo(cx, cy - r); c.lineTo(cx, cy + r); c.stroke(); }
+  else if (kind === 'x') { c.moveTo(cx - r * .8, cy - r * .8); c.lineTo(cx + r * .8, cy + r * .8); c.moveTo(cx + r * .8, cy - r * .8); c.lineTo(cx - r * .8, cy + r * .8); c.stroke(); }
+}
 
 function setupHiDPI(c, w, h, x) {
   const d = Math.min(window.devicePixelRatio || 1, 3);
@@ -26,6 +52,7 @@ function block(c, x, y, s, color, alpha = 1) {
   c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
   c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
   c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  if (MARKS) drawMark(c, x, y, s, color);
   c.globalAlpha = 1;
 }
 function rrect(c, x, y, w, h, r) {
@@ -33,7 +60,7 @@ function rrect(c, x, y, w, h, r) {
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
@@ -48,6 +75,8 @@ function show(name, fromHash) {
   document.body.classList.toggle('pop', name === 'pop');
   document.body.classList.toggle('sld', name === 'sld');
   if (name === 'menu') refreshMenu();
+  if (name === 'stats') renderStats();
+  maybeIntro(name);
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);
 }
