@@ -1,5 +1,5 @@
 // Offline cache for Brick Arcade. Bump VERSION whenever any file changes.
-const VERSION = 'brick-arcade-v2';
+const VERSION = 'brick-arcade-v3';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
