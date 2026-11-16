@@ -1,0 +1,1995 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15131e">
+<title>Brick Arcade</title>
+<style>
+/* standalone base: what the artifact viewer used to provide */
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font-size:14px;overscroll-behavior:none}
+[hidden]{display:none!important}
+</style>
+<style>
+/* Layout: an arcade cabinet with a title screen (two game cards) and one screen per game; single dark look on purpose */
+:root{
+  --bg:#15131e; --panel:#201d2d; --well:#0f0d17; --cell:#1d1a2a; --line:#302b44;
+  --ink:#efeaf7; --muted:#9b93b5; --accent:#ffb547; --veil:rgba(15,13,23,.88);
+  /* Brickpack only: a lighter dusk-violet set so the board reads clearly */
+  --pack-bg:#4f4a82; --pack-well:#363162; --pack-cell:#4a437c; --pack-line:#6e67a8; --pack-muted:#d0cbea; --pack-veil:rgba(42,38,80,.9);
+  /* Brickbreak & Brickstack: mid-tone blues so the play field never reads as black */
+  --brk-bg:#3b4878; --brk-field:#27315c; --brk-line:#606da5; --brk-muted:#cfd5ef; --brk-veil:rgba(30,36,72,.9);
+  --stk-bg:#3e4680; --stk-line:#6a72ad; --stk-muted:#d2d6ef; --stk-veil:rgba(34,38,76,.9);
+  --display:"Bungee","Impact",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,"Consolas",monospace;
+  --ball:#ffffff; --is-light:0; --logo-shadow:none;
+  color-scheme:dark;
+}
+/* Light skin: chosen in Settings (data-skin="light"), or "system" following the device / viewer theme */
+:root[data-skin="light"],
+:root[data-skin="system"][data-theme="light"]{
+  --bg:#f2f0f7; --panel:#ffffff; --well:#e2deee; --cell:#d6d0e6; --line:#cdc6df;
+  --ink:#211c31; --muted:#655d80; --accent:#d48806; --veil:rgba(242,240,247,.9);
+  --pack-bg:#e7e3f6; --pack-well:#c8c1e4; --pack-cell:#ddd7f0; --pack-line:#b5acd6; --pack-muted:#554d74; --pack-veil:rgba(236,233,248,.92);
+  --brk-bg:#dde5f6; --brk-field:#c2cfee; --brk-line:#a9b6dc; --brk-muted:#4a5680; --brk-veil:rgba(228,234,250,.92);
+  --stk-bg:#dfe3f6; --stk-line:#b0b7de; --stk-muted:#4c537e; --stk-veil:rgba(230,233,250,.92);
+  --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: light){
+  :root[data-skin="system"]:not([data-theme="dark"]){
+    --bg:#f2f0f7; --panel:#ffffff; --well:#e2deee; --cell:#d6d0e6; --line:#cdc6df;
+    --ink:#211c31; --muted:#655d80; --accent:#d48806; --veil:rgba(242,240,247,.9);
+    --pack-bg:#e7e3f6; --pack-well:#c8c1e4; --pack-cell:#ddd7f0; --pack-line:#b5acd6; --pack-muted:#554d74; --pack-veil:rgba(236,233,248,.92);
+    --brk-bg:#dde5f6; --brk-field:#c2cfee; --brk-line:#a9b6dc; --brk-muted:#4a5680; --brk-veil:rgba(228,234,250,.92);
+    --stk-bg:#dfe3f6; --stk-line:#b0b7de; --stk-muted:#4c537e; --stk-veil:rgba(230,233,250,.92);
+    --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35);
+    color-scheme:light;
+  }
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-highlight-color:transparent}
+.wrap{max-width:760px;margin:0 auto;padding-block:20px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.screen{display:flex;flex-direction:column;align-items:center;gap:16px;width:100%}
+
+/* logo */
+.logo{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(30px,8vw,52px);letter-spacing:.02em;line-height:1;text-align:center;text-wrap:balance}
+.logo span:nth-child(7n+1){color:#56cfe1}.logo span:nth-child(7n+2){color:#f4cc4a}.logo span:nth-child(7n+3){color:#b47cf2}
+.logo span:nth-child(7n+4){color:#6ccf86}.logo span:nth-child(7n+5){color:#ef6670}.logo span:nth-child(7n+6){color:#5c86f2}
+.logo span:nth-child(7n){color:#f39b4a}
+.logo .gap{display:inline-block;width:.4em}
+.tag{margin:0;color:var(--muted);font-size:14px;text-align:center}
+
+/* menu */
+.menu-head{display:flex;flex-direction:column;gap:10px;padding-block:12px 4px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;width:100%;max-width:640px}
+.card{display:flex;flex-direction:column;gap:12px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;color:var(--ink);font:inherit;cursor:pointer;transition:transform .15s ease,border-color .15s ease}
+.card:hover{border-color:var(--accent);transform:translateY(-3px)}
+.card:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.card .art{display:flex;justify-content:center;align-items:center;background:var(--well);border-radius:6px;padding-block:16px;min-height:150px}
+.card canvas{display:block;max-width:100%;height:auto}
+.card h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px;letter-spacing:.02em}
+.card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.card .meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:auto;font-size:12px;color:var(--muted)}
+.card .meta b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+.card .play{color:var(--accent);font-weight:600;font-size:14px}
+.menu-foot{color:var(--muted);font-size:12px;margin:0}
+
+/* game screens */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;max-width:640px}
+.back{font:600 14px var(--body);color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer}
+.back:hover{border-color:var(--muted)}
+.gname{font-family:var(--display);font-size:18px;letter-spacing:.03em}
+.back:focus-visible,.btn:focus-visible,.pad button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+.game{display:grid;grid-template-columns:120px auto 120px;grid-template-areas:"hold well side";gap:16px;align-items:start}
+.hold{grid-area:hold;display:flex;flex-direction:column;gap:12px}
+.well{grid-area:well;position:relative}
+.side{grid-area:side;display:flex;flex-direction:column;gap:12px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.label{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.mini{display:block;width:100%;height:auto}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--mono);font-weight:500;font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.stat.score b{color:var(--accent)}
+.keys{font-size:12px;color:var(--muted);display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin:0}
+.keys dt{font-family:var(--mono);color:var(--ink);font-size:11px}
+.keys dd{margin:0}
+
+#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;background:var(--well);border:2px solid var(--line);border-radius:4px}
+.overlay{position:absolute;inset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--veil);border-radius:6px;padding:16px}
+.overlay h2{margin:0;font-family:var(--display);font-weight:400;font-size:26px;color:var(--ink)}
+.overlay p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+.overlay .big{font-family:var(--mono);font-size:28px;color:var(--accent)}
+.overlay .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.btn{font:600 15px var(--body);color:#1b1608;background:var(--accent);border:0;border-radius:6px;padding:10px 22px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+
+.pad{display:none;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:420px;touch-action:none;user-select:none;-webkit-user-select:none}
+.pad button{font:600 15px var(--body);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;height:54px;cursor:pointer;touch-action:none}
+.pad button.go{background:var(--accent);color:#1b1608;border-color:transparent}
+.pad button:active{filter:brightness(1.35)}
+
+/* brickpack */
+body.pack,body.pop,body.sld{--bg:var(--pack-bg);--line:var(--pack-line);--muted:var(--pack-muted);--veil:var(--pack-veil)}
+.pstats{display:flex;gap:28px;justify-content:center;align-items:flex-end}
+.pstats .stat{align-items:center}
+.combo{font-family:var(--display);font-size:15px;color:var(--accent);min-width:7ch;text-align:center}
+.pwell{position:relative}
+#packCv{display:block;width:min(100%,420px,calc((100vh - 190px) * 360 / 510));aspect-ratio:360/510;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.hint{margin:0;color:var(--muted);font-size:12px;text-align:center}
+
+/* brickbreak & brickstack */
+body.brk{--bg:var(--brk-bg);--line:var(--brk-line);--muted:var(--brk-muted);--veil:var(--brk-veil)}
+body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--veil:var(--stk-veil)}
+.hud{display:flex;gap:24px;justify-content:center;align-items:flex-end;flex-wrap:wrap}
+.hud .stat{align-items:center}
+.hud .lives{color:#ef6670;letter-spacing:.1em}
+.field{position:relative}
+#brkCv,#stkCv{display:block;width:min(100%,400px,calc((100vh - 190px) * 360 / 540));aspect-ratio:360/540;height:auto;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none}
+#brkCv{cursor:none}
+#stkCv{cursor:pointer}
+
+/* brickpop & brickslide */
+#popCv{display:block;width:min(100%,420px,calc((100vh - 220px) * 360 / 440));aspect-ratio:360/440;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+#sldCv{display:block;width:min(100%,400px,calc((100vh - 200px) * 360 / 480));aspect-ratio:360/480;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.preview{font-family:var(--mono);font-size:14px;color:var(--accent);min-width:9ch;text-align:center}
+.tools{display:flex;gap:8px;justify-content:center}
+
+/* settings */
+.logo{text-shadow:var(--logo-shadow)}
+.bar-r{display:flex;align-items:center;gap:10px}
+.gear{font:600 16px var(--body);line-height:1;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+.gear:hover{border-color:var(--muted)}
+.gear:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.menu-tools{display:flex;justify-content:center}
+.sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:var(--veil);padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet-card{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(100%,360px);display:flex;flex-direction:column;gap:18px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.sheet-card h2{margin:0;font-family:var(--display);font-weight:400;font-size:22px}
+.seg{border:0;margin:0;padding:0;min-width:0}
+.seg legend{padding:0;margin-bottom:8px}
+.seg-row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg label{position:relative;display:block}
+.seg input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.seg span{display:block;text-align:center;padding:10px 0;border:1px solid var(--line);border-radius:8px;font-weight:600;font-size:14px}
+.seg input:checked+span{background:var(--accent);color:#1b1608;border-color:transparent}
+.seg input:focus-visible+span{outline:2px solid var(--ink);outline-offset:2px}
+.vol{display:flex;flex-direction:column;gap:8px}
+.vol-row{display:flex;gap:12px;align-items:center}
+.vol-row input{flex:1;min-width:0;accent-color:var(--accent)}
+.vol-row b{font-family:var(--mono);font-weight:500;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
+.note{margin:0;color:var(--muted);font-size:12px}
+.seg.two .seg-row{grid-template-columns:repeat(2,1fr)}
+.seg.two .note{margin-top:8px}
+.seg input:disabled+span{opacity:.45}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;display:flex;align-items:center;gap:10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);font-weight:600;font-size:14px;width:max-content;max-width:calc(100vw - 32px)}
+.toast .btn{padding:8px 12px}
+.toast-x{background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px 8px;border-radius:6px}
+.toast-x:focus-visible{outline:2px solid var(--ink)}
+
+@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} }
+@media (max-width:640px){
+  .game{grid-template-columns:72px auto 72px;gap:8px}
+  .panel{padding:8px}
+  .stat b{font-size:15px}
+  #board{width:min(calc(54vh / 2),calc(100vw - 32px - 160px))}
+  .overlay h2{font-size:20px}
+}
+@media (max-width:560px){ .cards{grid-template-columns:1fr} .card .art{min-height:0} }
+@media (prefers-reduced-motion:reduce){ .card{transition:none} .card:hover{transform:none} }
+</style>
+</head>
+<body>
+
+<main class="wrap">
+
+  <!-- ============ MENU ============ -->
+  <section class="screen" id="scrMenu">
+    <div class="menu-head">
+      <h1 class="logo" aria-label="Brick Arcade"><span>B</span><span>R</span><span>I</span><span>C</span><span>K</span><i class="gap"></i><span>A</span><span>R</span><span>C</span><span>A</span><span>D</span><span>E</span></h1>
+      <p class="tag">플레이할 게임을 고르세요</p>
+    </div>
+    <div class="cards">
+      <button class="card" type="button" id="goFall">
+        <div class="art"><canvas id="artFall" width="140" height="140"></canvas></div>
+        <h2>BRICKFALL</h2>
+        <p>위에서 떨어지는 블록을 돌리고 쌓아 가로줄을 지워요. 10줄마다 빨라져요.</p>
+        <div class="meta"><span>최고 <b id="mBestFall">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goPack">
+        <div class="art"><canvas id="artPack" width="140" height="140"></canvas></div>
+        <h2>BRICKPACK</h2>
+        <p>조각 3개를 8×8 판에 끌어다 놓아 가로·세로 줄을 지워요. 시간 제한은 없어요.</p>
+        <div class="meta"><span>최고 <b id="mBestPack">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goBrk">
+        <div class="art"><canvas id="artBrk" width="140" height="140"></canvas></div>
+        <h2>BRICKBREAK</h2>
+        <p>내려오는 벽돌 벽을 공으로 깨요. 끝없이 이어지고 점점 빨라져요. 아이템도 있어요.</p>
+        <div class="meta"><span>최고 <b id="mBestBrk">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goStk">
+        <div class="art"><canvas id="artStk" width="140" height="140"></canvas></div>
+        <h2>BRICKSTACK</h2>
+        <p>움직이는 벽돌을 탭해서 쌓아요. 삐져나온 부분은 잘려 나가요. 한 판이 짧아요.</p>
+        <div class="meta"><span>최고 <b id="mBestStk">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goPop">
+        <div class="art"><canvas id="artPop" width="140" height="140"></canvas></div>
+        <h2>BRICKPOP</h2>
+        <p>같은 색 덩어리를 눌러 터뜨려요. 아래에서 새 줄이 끝없이 올라와요. 크게 터뜨릴수록 점수가 커요.</p>
+        <div class="meta"><span>최고 <b id="mBestPop">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goSld">
+        <div class="art"><canvas id="artSld" width="140" height="140"></canvas></div>
+        <h2>BRICKSLIDE</h2>
+        <p>가로 벽돌을 좌우로 밀어 떨어뜨리고 줄을 채워요. 한 번 밀 때마다 아래에서 새 줄이 올라와요.</p>
+        <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+    </div>
+    <div class="menu-tools"><button class="gear" type="button" data-settings>⚙ 설정</button></div>
+    <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
+  </section>
+
+  <!-- ============ BRICKFALL ============ -->
+  <section class="screen" id="scrFall" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKFALL</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="game">
+      <div class="hold">
+        <div class="panel"><span class="label">홀드</span><canvas id="holdCv" class="mini" width="96" height="64"></canvas></div>
+        <div class="panel keys-panel">
+          <span class="label">조작</span>
+          <dl class="keys">
+            <dt>← →</dt><dd>이동</dd>
+            <dt>↓</dt><dd>소프트 드롭</dd>
+            <dt>↑ X</dt><dd>회전 ↻</dd>
+            <dt>Z</dt><dd>회전 ↺</dd>
+            <dt>Space</dt><dd>하드 드롭</dd>
+            <dt>C</dt><dd>홀드</dd>
+            <dt>P Esc</dt><dd>일시정지</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="well">
+        <canvas id="board" width="320" height="640" aria-label="Brickfall 게임 보드"></canvas>
+        <div class="overlay" id="overlay">
+          <h2 id="ovTitle">BRICKFALL</h2>
+          <p id="ovText"></p>
+          <div class="big" id="ovScore" hidden></div>
+          <button class="btn" id="ovBtn" type="button">시작</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="panel"><span class="label">다음</span><canvas id="nextCv" class="mini" width="96" height="192"></canvas></div>
+        <div class="panel">
+          <div class="stat score"><span class="label">점수</span><b id="sScore">0</b></div>
+          <div class="stat"><span class="label">줄</span><b id="sLines">0</b></div>
+          <div class="stat"><span class="label">레벨</span><b id="sLevel">1</b></div>
+          <div class="stat"><span class="label">최고</span><b id="sBest">0</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="pad" id="pad">
+      <button type="button" data-act="hold">홀드</button>
+      <button type="button" data-act="ccw" aria-label="반시계 회전">↺</button>
+      <button type="button" data-act="cw" aria-label="시계 회전">↻</button>
+      <button type="button" data-act="pause" aria-label="일시정지">Ⅱ</button>
+      <button type="button" data-act="left" aria-label="왼쪽">←</button>
+      <button type="button" data-act="down" aria-label="아래">↓</button>
+      <button type="button" data-act="right" aria-label="오른쪽">→</button>
+      <button type="button" data-act="drop" class="go">드롭</button>
+    </div>
+  </section>
+
+  <!-- ============ BRICKPACK ============ -->
+  <section class="screen" id="scrPack" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="pstats">
+      <div class="stat score"><span class="label">점수</span><b id="pScore">0</b></div>
+      <div class="combo" id="pCombo" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="pBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="packCv" width="360" height="510" aria-label="Brickpack 게임 보드"></canvas>
+      <div class="overlay" id="pOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="pOvText">더 이상 놓을 자리가 없어요.</p>
+        <div class="big" id="pOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="pRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">아래 조각을 끌어서 판 위에 놓으세요. 놓을 수 없는 조각은 흐리게 보여요.</p>
+  </section>
+
+  <!-- ============ BRICKBREAK ============ -->
+  <section class="screen" id="scrBrk" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKBREAK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="bScore">0</b></div>
+      <div class="stat"><span class="label">레벨</span><b id="bStage">1</b></div>
+      <div class="stat"><span class="label">목숨</span><b id="bLives" class="lives">♥♥♥</b></div>
+      <div class="stat"><span class="label">최고</span><b id="bBest">0</b></div>
+    </div>
+    <div class="field">
+      <canvas id="brkCv" width="360" height="540" aria-label="Brickbreak 게임 화면"></canvas>
+      <div class="overlay" id="bOverlay">
+        <h2 id="bOvTitle">BRICKBREAK</h2>
+        <p id="bOvText"></p>
+        <div class="big" id="bOvScore" hidden></div>
+        <button class="btn" id="bOvBtn" type="button">시작</button>
+      </div>
+    </div>
+    <p class="hint">← → 키, 마우스, 또는 화면을 끌어서 패들을 움직여요. 탭 또는 Space로 공을 발사해요. P·Esc 일시정지.</p>
+  </section>
+
+  <!-- ============ BRICKSTACK ============ -->
+  <section class="screen" id="scrStk" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSTACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">높이</span><b id="tScore">0</b></div>
+      <div class="stat"><span class="label">최고</span><b id="tBest">0</b></div>
+    </div>
+    <div class="field">
+      <canvas id="stkCv" width="360" height="540" aria-label="Brickstack 게임 화면"></canvas>
+      <div class="overlay" id="tOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="tOvText"></p>
+        <div class="big" id="tOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="tRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">화면을 탭하거나 Space를 눌러 벽돌을 떨어뜨려요. 딱 맞추면 퍼펙트!</p>
+  </section>
+
+  <!-- ============ BRICKPOP ============ -->
+  <section class="screen" id="scrPop" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPOP</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="oScore">0</b></div>
+      <div class="stat"><span class="label">레벨</span><b id="oLevel">1</b></div>
+      <div class="stat"><span class="label">다음 줄까지</span><b id="oNext">4번</b></div>
+      <div class="preview" id="oPreview" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="oBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="popCv" width="360" height="440" aria-label="Brickpop 게임 보드"></canvas>
+      <div class="overlay" id="oOverlay" hidden>
+        <h2 id="oOvTitle">게임 오버</h2>
+        <p id="oOvText"></p>
+        <div class="big" id="oOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="oRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <div class="tools"><button class="back" type="button" id="oNew">새 판</button></div>
+    <p class="hint">같은 색이 2개 이상 붙은 덩어리를 누르면 터져요. n개면 (n−2)²점. 몇 번 터뜨릴 때마다 아래에서 새 줄이 올라오고(판 아래 줄이 다음 줄), 벽돌이 맨 위를 넘으면 끝나요. 판을 비우면 보너스 1,000점.</p>
+  </section>
+
+  <!-- ============ BRICKSLIDE ============ -->
+  <section class="screen" id="scrSld" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSLIDE</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="lScore">0</b></div>
+      <div class="stat"><span class="label">지운 줄</span><b id="lLines">0</b></div>
+      <div class="stat"><span class="label">최고</span><b id="lBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="sldCv" width="360" height="480" aria-label="Brickslide 게임 보드"></canvas>
+      <div class="overlay" id="lOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="lOvText"></p>
+        <div class="big" id="lOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="lRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">벽돌을 좌우로 끌어서 옮기면 떨어져서 줄을 채워요. 꽉 찬 줄은 지워지고, 한 번 옮길 때마다 아래에서 새 줄이 올라와요.</p>
+  </section>
+
+  <!-- ============ UPDATE NOTICE (installed app only) ============ -->
+  <div class="toast" id="updToast" hidden role="status">
+    <span>새 버전이 있어요</span>
+    <button class="btn" id="updBtn" type="button">새로고침</button>
+    <button class="toast-x" id="updLater" type="button" aria-label="나중에">✕</button>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="sheet-card">
+      <h2 id="setTitle">설정</h2>
+      <fieldset class="seg">
+        <legend class="label">화면 테마</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="skin" value="dark" id="skinDark"><span>다크</span></label>
+          <label><input type="radio" name="skin" value="light" id="skinLight"><span>라이트</span></label>
+          <label><input type="radio" name="skin" value="system" id="skinSystem"><span>시스템</span></label>
+        </div>
+      </fieldset>
+      <div class="vol">
+        <label class="label" for="volRange">효과음 음량</label>
+        <div class="vol-row"><input type="range" id="volRange" min="0" max="100" step="5" value="70"><b id="volVal">70</b></div>
+        <p class="note">0으로 두면 소리가 꺼져요. 시스템은 기기 설정을 따라가요.</p>
+      </div>
+      <fieldset class="seg two" id="vibeSet">
+        <legend class="label">진동</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="vibe" value="on" id="vibeOn"><span>켜기</span></label>
+          <label><input type="radio" name="vibe" value="off" id="vibeOff"><span>끄기</span></label>
+        </div>
+        <p class="note" id="vibeNote">줄을 지우거나 게임이 끝날 때 짧게 진동해요.</p>
+      </fieldset>
+      <button class="btn" id="closeSettings" type="button">닫기</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+// ================= shared =================
+const $ = id => document.getElementById(id);
+const COLORS = { I:'#56cfe1', O:'#f4cc4a', T:'#b47cf2', S:'#6ccf86', Z:'#ef6670', J:'#5c86f2', L:'#f39b4a' };
+const PALETTE = Object.values(COLORS);
+const css = getComputedStyle(document.documentElement);
+const tok = (n, d) => css.getPropertyValue(n).trim() || d;
+let WELL = tok('--well', '#0f0d17'), GRID = tok('--line', '#302b44'), EMPTY = tok('--cell', '#1d1a2a');
+let PWELL = tok('--pack-well', '#363162'), PEMPTY = tok('--pack-cell', '#4a437c');
+const fmt = n => n.toLocaleString('ko-KR');
+const load = k => { try { return parseInt(localStorage.getItem(k) || '0', 10) || 0; } catch (e) { return 0; } };
+const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+// games in progress (Brickpack, Brickpop, Brickslide) are kept here so closing the app doesn't lose them
+const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const dropKey = k => { try { localStorage.removeItem(k); } catch (e) {} };
+
+function setupHiDPI(c, w, h, x) {
+  const d = Math.min(window.devicePixelRatio || 1, 3);
+  c.width = w * d; c.height = h * d; x.setTransform(d, 0, 0, d, 0, 0);
+}
+function block(c, x, y, s, color, alpha = 1) {
+  if (s <= 0) return;
+  c.globalAlpha = alpha;
+  c.fillStyle = color; c.fillRect(x + 1, y + 1, s - 2, s - 2);
+  const e = Math.max(2, s * .15);
+  c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
+  c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
+  c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  c.globalAlpha = 1;
+}
+function rrect(c, x, y, w, h, r) {
+  c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); c.fill();
+}
+
+// ================= navigation =================
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld') };
+let current = 'menu';
+function show(name, fromHash) {
+  if (!screens[name]) name = 'menu';
+  if (current === 'fall' && name !== 'fall' && S.mode === 'play') togglePause();
+  if (current === 'brk' && name !== 'brk' && B.mode === 'play') brkPause();
+  if (current === 'stk' && name !== 'stk') stkPause();
+  for (const k in screens) screens[k].hidden = k !== name;
+  current = name;
+  document.body.classList.toggle('pack', name === 'pack');
+  document.body.classList.toggle('brk', name === 'brk');
+  document.body.classList.toggle('stk', name === 'stk');
+  document.body.classList.toggle('pop', name === 'pop');
+  document.body.classList.toggle('sld', name === 'sld');
+  if (name === 'menu') refreshMenu();
+  if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
+  window.scrollTo(0, 0);
+}
+addEventListener('hashchange', () => show(location.hash.slice(1), true));
+document.querySelectorAll('[data-nav]').forEach(b => b.addEventListener('click', () => show(b.dataset.nav)));
+$('goFall').addEventListener('click', () => show('fall'));
+$('goPack').addEventListener('click', () => show('pack'));
+$('goBrk').addEventListener('click', () => show('brk'));
+$('goStk').addEventListener('click', () => show('stk'));
+$('goPop').addEventListener('click', () => show('pop'));
+$('goSld').addEventListener('click', () => show('sld'));
+
+function refreshMenu() {
+  $('mBestFall').textContent = fmt(best);
+  $('mBestPack').textContent = fmt(pBest);
+  $('mBestBrk').textContent = fmt(bBest);
+  $('mBestStk').textContent = fmt(tBest);
+  $('mBestPop').textContent = fmt(oBest);
+  $('mBestSld').textContent = fmt(lBest);
+}
+function drawArt(id, rows, cell) {
+  const c = $(id), x = c.getContext('2d');
+  setupHiDPI(c, 140, 140, x);
+  const w = rows[0].length * cell, h = rows.length * cell, ox = (140 - w) / 2, oy = (140 - h) / 2;
+  rows.forEach((row, r) => [...row].forEach((ch, cc) => {
+    const px = ox + cc * cell, py = oy + r * cell;
+    if (ch === '.') { x.fillStyle = EMPTY; x.fillRect(px + 1, py + 1, cell - 2, cell - 2); }
+    else block(x, px, py, cell, COLORS[ch]);
+  }));
+}
+function artFP() {
+drawArt('artFall', [
+  '....T.....', '...TTT....', '..........', '..........', '..........',
+  'I.........', 'I.......OO', 'I.LL..SSOO', 'ILLZZSS.JJ', 'IL.ZZJJJ.J'
+], 13);
+drawArt('artPack', [
+  '........', '..OO....', '..OO.TTT', 'S.....T.', 'SS......', '.S..LLL.', 'IIIIL...', 'JJJ.ZZ..'
+], 16);
+}
+artFP();
+
+// ================= BRICKFALL =================
+const COLS = 10, ROWS = 20, CELL = 32;
+const SHAPES = {
+  I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  J: [[1,0,0],[1,1,1],[0,0,0]],
+  L: [[0,0,1],[1,1,1],[0,0,0]],
+  O: [[1,1],[1,1]],
+  S: [[0,1,1],[1,1,0],[0,0,0]],
+  T: [[0,1,0],[1,1,1],[0,0,0]],
+  Z: [[1,1,0],[0,1,1],[0,0,0]],
+};
+const KICKS = [[0,0],[-1,0],[1,0],[0,-1],[-2,0],[2,0],[-1,-1],[1,-1]];
+const LINE_PTS = [0,100,300,500,800];
+const DAS = 160, ARR = 45, SOFT = 40, LOCK = 500, CLEAR_MS = 240;
+
+const cv = $('board'), ctx = cv.getContext('2d');
+const holdCv = $('holdCv'), hctx = holdCv.getContext('2d');
+const nextCv = $('nextCv'), nctx = nextCv.getContext('2d');
+setupHiDPI(cv, COLS*CELL, ROWS*CELL, ctx);
+setupHiDPI(holdCv, 96, 64, hctx);
+setupHiDPI(nextCv, 96, 192, nctx);
+
+let best = load('brickfall-best');
+let S;
+function fresh() {
+  return { board: Array.from({length: ROWS}, () => Array(COLS).fill(null)),
+    queue: [], cur: null, hold: null, canHold: true, score: 0, lines: 0, level: 1,
+    mode: 'ready', dropAcc: 0, lockT: 0, lockResets: 0, clearing: null, clearT: 0 };
+}
+const rotM = (m, dir) => {
+  const n = m.length, out = m.map(r => r.slice());
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
+    if (dir > 0) out[c][n-1-r] = m[r][c]; else out[n-1-c][r] = m[r][c];
+  return out;
+};
+function collide(m, x, y) {
+  for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++) {
+    if (!m[r][c]) continue;
+    const nx = x + c, ny = y + r;
+    if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
+    if (ny >= 0 && S.board[ny][nx]) return true;
+  }
+  return false;
+}
+function refill() {
+  const b = Object.keys(SHAPES);
+  for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  S.queue.push(...b);
+}
+function nextType() { while (S.queue.length < 8) refill(); return S.queue.shift(); }
+function spawn(type) {
+  const m = SHAPES[type].map(r => r.slice());
+  S.cur = { type, m, x: Math.floor((COLS - m.length) / 2), y: type === 'I' ? -1 : 0 };
+  S.lockT = 0; S.lockResets = 0; S.dropAcc = 0;
+  if (collide(S.cur.m, S.cur.x, S.cur.y)) gameOver();
+}
+const grounded = () => S.cur && collide(S.cur.m, S.cur.x, S.cur.y + 1);
+function touched() { if (grounded() && S.lockResets < 15) { S.lockT = 0; S.lockResets++; } }
+function move(dx) {
+  if (!S.cur || collide(S.cur.m, S.cur.x + dx, S.cur.y)) return false;
+  S.cur.x += dx; touched(); sfx('move'); return true;
+}
+function rotate(dir) {
+  if (!S.cur || S.cur.type === 'O') return;
+  const m = rotM(S.cur.m, dir);
+  for (const [kx, ky] of KICKS) {
+    if (!collide(m, S.cur.x + kx, S.cur.y + ky)) { S.cur.m = m; S.cur.x += kx; S.cur.y += ky; touched(); sfx('rotate'); return; }
+  }
+}
+function softDrop() {
+  if (!S.cur) return;
+  if (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) { S.cur.y++; S.score += 1; S.dropAcc = 0; }
+}
+function hardDrop() {
+  if (!S.cur) return;
+  let d = 0;
+  while (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) { S.cur.y++; d++; }
+  S.score += d * 2; sfx('drop'); lock();
+}
+function holdPiece() {
+  if (!S.cur || !S.canHold) return;
+  const t = S.cur.type;
+  if (S.hold) { const h = S.hold; S.hold = t; spawn(h); } else { S.hold = t; spawn(nextType()); }
+  S.canHold = false; sfx('hold');
+}
+function lock() {
+  const { m, x, y, type } = S.cur;
+  let above = false;
+  for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++) {
+    if (!m[r][c]) continue;
+    if (y + r < 0) { above = true; continue; }
+    S.board[y + r][x + c] = type;
+  }
+  S.cur = null;
+  if (above) { gameOver(); return; }
+  const full = [];
+  for (let r = 0; r < ROWS; r++) if (S.board[r].every(Boolean)) full.push(r);
+  if (full.length) { S.clearing = full; S.clearT = 0; sfx('clear', full.length); }
+  else { sfx('lock'); spawn(nextType()); S.canHold = true; }
+}
+function finishClear() {
+  const n = S.clearing.length;
+  S.board = S.board.filter((_, r) => !S.clearing.includes(r));
+  while (S.board.length < ROWS) S.board.unshift(Array(COLS).fill(null));
+  S.score += LINE_PTS[n] * S.level;
+  S.lines += n;
+  S.level = Math.floor(S.lines / 10) + 1;
+  S.clearing = null;
+  spawn(nextType()); S.canHold = true;
+}
+const gravityMs = lv => Math.max(8, Math.pow(Math.max(0.8 - (lv - 1) * 0.007, 0.05), lv - 1) * 1000);
+
+function start() { S = fresh(); S.mode = 'play'; spawn(nextType()); showOverlay(); }
+function gameOver() {
+  S.mode = 'over'; S.cur = null; sfx('over');
+  if (S.score > best) { best = S.score; save('brickfall-best', best); }
+  showOverlay();
+}
+function togglePause() {
+  if (S.mode === 'play') S.mode = 'pause';
+  else if (S.mode === 'pause') S.mode = 'play';
+  releaseAll(); showOverlay();
+}
+
+const ov = $('overlay'), ovTitle = $('ovTitle'), ovText = $('ovText'), ovScore = $('ovScore'), ovBtn = $('ovBtn');
+function showOverlay() {
+  if (S.mode === 'play') { ov.hidden = true; return; }
+  ov.hidden = false; ovScore.hidden = true;
+  if (S.mode === 'ready') {
+    ovTitle.textContent = 'BRICKFALL';
+    ovText.innerHTML = '줄을 채우면 사라집니다.<br>10줄마다 레벨이 오르고 빨라집니다.';
+    ovBtn.textContent = '시작';
+  } else if (S.mode === 'pause') {
+    ovTitle.textContent = '일시정지';
+    ovText.textContent = 'P 또는 Esc로 계속합니다.';
+    ovBtn.textContent = '계속';
+  } else {
+    ovTitle.textContent = '게임 오버';
+    ovText.textContent = S.score >= best && S.score > 0 ? '새 최고 기록입니다.' : `레벨 ${S.level} · ${S.lines}줄`;
+    ovScore.hidden = false; ovScore.textContent = fmt(S.score);
+    ovBtn.textContent = '다시 시작';
+  }
+}
+ovBtn.addEventListener('click', () => { if (S.mode === 'pause') togglePause(); else start(); });
+
+const shown = {};
+function setText(id, v) { if (shown[id] !== v) { shown[id] = v; $(id).textContent = typeof v === 'number' ? fmt(v) : v; } }
+function updateStats() {
+  setText('sScore', S.score); setText('sLines', S.lines); setText('sLevel', S.level); setText('sBest', Math.max(best, S.score));
+}
+
+const held = { left: false, right: false, down: false };
+let dasDir = 0, dasT = 0, arrT = 0, softT = 0;
+function releaseAll() { held.left = held.right = held.down = false; dasDir = 0; }
+function press(act) {
+  if (S.mode === 'ready' || S.mode === 'over') { if (act === 'drop' || act === 'start') start(); return; }
+  if (act === 'pause') { togglePause(); return; }
+  if (S.mode !== 'play' || !S.cur) {
+    if (act === 'left' || act === 'right' || act === 'down') held[act] = true;
+    if (act === 'left' || act === 'right') { dasDir = act === 'left' ? -1 : 1; dasT = arrT = 0; }
+    return;
+  }
+  switch (act) {
+    case 'left': case 'right':
+      held[act] = true; dasDir = act === 'left' ? -1 : 1; dasT = arrT = 0; move(dasDir); break;
+    case 'down': held.down = true; softT = 0; softDrop(); break;
+    case 'cw': rotate(1); break;
+    case 'ccw': rotate(-1); break;
+    case 'drop': hardDrop(); break;
+    case 'hold': holdPiece(); break;
+  }
+}
+function release(act) {
+  if (act === 'left' || act === 'right') {
+    held[act] = false;
+    const want = held.left ? -1 : held.right ? 1 : 0;
+    if (want !== dasDir) { dasDir = want; dasT = arrT = 0; }
+  } else if (act === 'down') held.down = false;
+}
+const KEYMAP = { ArrowLeft:'left', ArrowRight:'right', ArrowDown:'down', ArrowUp:'cw', KeyX:'cw', KeyZ:'ccw',
+  Space:'drop', KeyC:'hold', ShiftLeft:'hold', ShiftRight:'hold', KeyP:'pause', Escape:'pause', Enter:'start' };
+addEventListener('keydown', e => {
+  if (current === 'menu') {
+    if (e.key === '1') show('fall'); else if (e.key === '2') show('pack');
+    else if (e.key === '3') show('brk'); else if (e.key === '4') show('stk');
+    else if (e.key === '5') show('pop'); else if (e.key === '6') show('sld');
+    return;
+  }
+  if (current !== 'fall') return;
+  const act = KEYMAP[e.code]; if (!act) return;
+  e.preventDefault();
+  if (e.repeat) return;
+  if (act === 'start') { if (S.mode === 'pause') togglePause(); else if (S.mode !== 'play') start(); return; }
+  press(act);
+});
+addEventListener('keyup', e => { if (current !== 'fall') return; const act = KEYMAP[e.code]; if (act) release(act); });
+addEventListener('blur', () => { releaseAll(); if (current === 'fall' && S.mode === 'play') togglePause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'fall' && S.mode === 'play') togglePause(); });
+
+document.querySelectorAll('#pad button').forEach(b => {
+  const act = b.dataset.act;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {} press(act); });
+  const up = () => release(act);
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+function updateFall(dt) {
+  if (S.mode !== 'play') return;
+  if (S.clearing) { S.clearT += dt; if (S.clearT >= CLEAR_MS) finishClear(); return; }
+  if (!S.cur) return;
+  if (dasDir) {
+    dasT += dt;
+    if (dasT >= DAS) { arrT += dt; while (arrT >= ARR) { arrT -= ARR; if (!move(dasDir)) { arrT = 0; break; } } }
+  }
+  if (held.down) { softT += dt; while (softT >= SOFT && S.cur) { softT -= SOFT; softDrop(); } }
+  const g = gravityMs(S.level);
+  S.dropAcc += dt;
+  while (S.dropAcc >= g && S.cur) {
+    S.dropAcc -= g;
+    if (!collide(S.cur.m, S.cur.x, S.cur.y + 1)) S.cur.y++; else { S.dropAcc = 0; break; }
+  }
+  if (S.cur && grounded()) { S.lockT += dt; if (S.lockT >= LOCK) lock(); }
+  else S.lockT = 0;
+}
+function drawFall() {
+  const W = COLS * CELL, H = ROWS * CELL;
+  ctx.fillStyle = WELL; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = GRID; ctx.lineWidth = 1; ctx.globalAlpha = .45;
+  ctx.beginPath();
+  for (let c = 1; c < COLS; c++) { ctx.moveTo(c * CELL + .5, 0); ctx.lineTo(c * CELL + .5, H); }
+  for (let r = 1; r < ROWS; r++) { ctx.moveTo(0, r * CELL + .5); ctx.lineTo(W, r * CELL + .5); }
+  ctx.stroke(); ctx.globalAlpha = 1;
+  const flash = S.clearing ? (Math.floor(S.clearT / 60) % 2 === 0) : false;
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const t = S.board[r][c]; if (!t) continue;
+    block(ctx, c * CELL, r * CELL, CELL, (S.clearing && S.clearing.includes(r) && flash) ? '#ffffff' : COLORS[t]);
+  }
+  if (S.cur && S.mode !== 'over') {
+    const { m, x, type } = S.cur; let gy = S.cur.y;
+    while (!collide(m, x, gy + 1)) gy++;
+    ctx.strokeStyle = COLORS[type]; ctx.lineWidth = 2; ctx.globalAlpha = .55;
+    for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++)
+      if (m[r][c] && gy + r >= 0) ctx.strokeRect((x + c) * CELL + 3, (gy + r) * CELL + 3, CELL - 6, CELL - 6);
+    ctx.globalAlpha = 1;
+    const fade = S.lockT > 0 ? 1 - (S.lockT / LOCK) * .35 : 1;
+    for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++)
+      if (m[r][c] && S.cur.y + r >= 0) block(ctx, (x + c) * CELL, (S.cur.y + r) * CELL, CELL, COLORS[type], fade);
+  }
+  hctx.clearRect(0, 0, 96, 64);
+  if (S.hold) drawMini(hctx, S.hold, 48, 32, 20, S.canHold ? 1 : .35);
+  nctx.clearRect(0, 0, 96, 192);
+  while (S.queue.length < 3) refill();
+  for (let i = 0; i < 3; i++) drawMini(nctx, S.queue[i], 48, 32 + i * 64, i === 0 ? 20 : 16, i === 0 ? 1 : .7);
+  updateStats();
+}
+function drawMini(c, type, cx, cy, s, alpha = 1) {
+  const m = SHAPES[type]; let r0 = 9, r1 = -1, c0 = 9, c1 = -1;
+  m.forEach((row, r) => row.forEach((v, cc) => { if (v) { r0 = Math.min(r0, r); r1 = Math.max(r1, r); c0 = Math.min(c0, cc); c1 = Math.max(c1, cc); } }));
+  const w = (c1 - c0 + 1) * s, h = (r1 - r0 + 1) * s, ox = cx - w / 2, oy = cy - h / 2;
+  for (let r = r0; r <= r1; r++) for (let cc = c0; cc <= c1; cc++)
+    if (m[r][cc]) block(c, ox + (cc - c0) * s, oy + (r - r0) * s, s, COLORS[type], alpha);
+}
+
+// ================= BRICKPACK =================
+const PB = 8, PC = 40, BX = 20, BY = 20, PW = 360, PH = 510, TRAY_Y = 372, SLOT = 120;
+const pcv = $('packCv'), pctx = pcv.getContext('2d');
+setupHiDPI(pcv, PW, PH, pctx);
+const PACK_SHAPES = [
+  [['#'],1], [['##'],2], [['#','#'],2], [['###'],2], [['#','#','#'],2],
+  [['####'],2], [['#','#','#','#'],2], [['#####'],1], [['#','#','#','#','#'],1],
+  [['##','##'],3], [['###','###','###'],1], [['###','###'],1], [['##','##','##'],1],
+  [['##','#.'],2], [['##','.#'],2], [['#.','##'],2], [['.#','##'],2],
+  [['###','#..'],1], [['###','..#'],1], [['#..','###'],1], [['..#','###'],1],
+  [['##','#.','#.'],1], [['##','.#','.#'],1], [['#.','#.','##'],1], [['.#','.#','##'],1],
+  [['###','.#.'],1], [['.#.','###'],1], [['#.','##','#.'],1], [['.#','##','.#'],1],
+  [['##.','.##'],1], [['.##','##.'],1], [['#.','##','.#'],1], [['.#','##','#.'],1],
+  [['###','#..','#..'],1], [['###','..#','..#'],1], [['#..','#..','###'],1], [['..#','..#','###'],1],
+];
+const PIECES = PACK_SHAPES.map(([rows, weight]) => {
+  const cells = [];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') cells.push([y, x]); }));
+  return { cells, h: rows.length, w: Math.max(...rows.map(r => r.length)), weight };
+});
+const TOTAL_W = PIECES.reduce((a, p) => a + p.weight, 0);
+
+let pBest = load('brickpack-best');
+let P, drag = null;
+function packFresh() {
+  const p = { grid: Array.from({length: PB}, () => Array(PB).fill(null)), tray: [null, null, null],
+    score: 0, combo: 0, sinceClear: 0, mode: 'play', fx: [], texts: [] };
+  return p;
+}
+function randPiece() {
+  let k = Math.random() * TOTAL_W, pick = PIECES[0];
+  for (const p of PIECES) { k -= p.weight; if (k < 0) { pick = p; break; } }
+  return { cells: pick.cells, w: pick.w, h: pick.h, color: PALETTE[Math.floor(Math.random() * PALETTE.length)] };
+}
+function fitsAt(p, r, c) {
+  for (const [dy, dx] of p.cells) {
+    const rr = r + dy, cc = c + dx;
+    if (rr < 0 || cc < 0 || rr >= PB || cc >= PB || P.grid[rr][cc]) return false;
+  }
+  return true;
+}
+function fitsAny(p) {
+  for (let r = 0; r <= PB - p.h; r++) for (let c = 0; c <= PB - p.w; c++) if (fitsAt(p, r, c)) return true;
+  return false;
+}
+function deal() {
+  for (let t = 0; t < 40; t++) {
+    const set = [randPiece(), randPiece(), randPiece()];
+    if (set.some(fitsAny) || t === 39) { P.tray = set; return; }
+  }
+}
+function packStart() {
+  P = packFresh(); drag = null; deal();
+  $('pOverlay').hidden = true; updatePackStats(); packSave();
+}
+const PACK_SAVE = 'brickpack-save';
+function packSave() {
+  if (P.mode !== 'play') { dropKey(PACK_SAVE); return; }
+  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear });
+}
+// pick up a saved game; false if there is none (or it is unreadable)
+function packResume() {
+  const s = loadJSON(PACK_SAVE);
+  if (!s || !Array.isArray(s.grid) || s.grid.length !== PB || !Array.isArray(s.tray)) return false;
+  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0 });
+  drag = null; $('pOverlay').hidden = true; updatePackStats();
+  if (!P.tray.some(t => t && fitsAny(t))) packOver();
+  return true;
+}
+function packOver() {
+  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE);
+  if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
+  else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
+  $('pOvScore').textContent = fmt(P.score);
+  updatePackStats();
+  setTimeout(() => { if (P.mode === 'over') $('pOverlay').hidden = false; }, 550);
+}
+$('pRestart').addEventListener('click', packStart);
+
+function place(i, r, c) {
+  const p = P.tray[i], now = performance.now();
+  for (const [dy, dx] of p.cells) P.grid[r + dy][c + dx] = p.color;
+  P.tray[i] = null;
+  let gain = p.cells.length;
+
+  const rows = [], cols = [];
+  for (let y = 0; y < PB; y++) if (P.grid[y].every(Boolean)) rows.push(y);
+  for (let x = 0; x < PB; x++) if (P.grid.every(row => row[x])) cols.push(x);
+  const n = rows.length + cols.length;
+  const cx = BX + (c + p.w / 2) * PC, cy = BY + (r + p.h / 2) * PC;
+
+  if (n) {
+    P.combo = (P.combo > 0 && P.sinceClear <= 3) ? P.combo + 1 : 1;
+    P.sinceClear = 0;
+    const lineGain = (n * (n + 1) / 2) * 10 * P.combo;
+    gain += lineGain;
+    const seen = new Set();
+    const clearCell = (y, x) => {
+      const k = y * PB + x; if (seen.has(k)) return; seen.add(k);
+      P.fx.push({ x, y, color: P.grid[y][x], t: now + (rows.includes(y) ? x : y) * 18 });
+    };
+    rows.forEach(y => { for (let x = 0; x < PB; x++) clearCell(y, x); });
+    cols.forEach(x => { for (let y = 0; y < PB; y++) clearCell(y, x); });
+    seen.forEach(k => { P.grid[Math.floor(k / PB)][k % PB] = null; });
+    let label = n > 1 ? `${n}줄! +${fmt(lineGain)}` : `+${fmt(lineGain)}`;
+    P.texts.push({ text: label, x: cx, y: cy, t: now, color: tok('--ink', '#ffffff') });
+    if (P.combo >= 2) P.texts.push({ text: `콤보 ×${P.combo}`, x: cx, y: cy + 30, t: now + 120, color: tok('--accent', '#ffb547') });
+    if (P.grid.every(row => row.every(v => !v))) {
+      gain += 300;
+      P.texts.push({ text: '판 비우기 +300', x: PW / 2, y: BY + PB * PC / 2, t: now + 250, color: '#6ccf86' });
+    }
+  } else {
+    P.sinceClear++;
+    if (P.sinceClear > 3) P.combo = 0;
+  }
+  P.score += gain;
+  sfx(n ? 'clear' : 'place', n + (P.combo >= 2 ? 1 : 0));
+  if (P.tray.every(t => !t)) deal();
+  updatePackStats();
+  if (!P.tray.some(t => t && fitsAny(t))) packOver(); else packSave();
+}
+function updatePackStats() {
+  setText('pScore', P.score);
+  setText('pBest', Math.max(pBest, P.score));
+  setText('pCombo', P.combo >= 2 ? `콤보 ×${P.combo}` : '');
+}
+
+// dragging
+function toLocal(e) {
+  const r = pcv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * PW / r.width, y: (e.clientY - r.top) * PH / r.height };
+}
+function snapFor(d) {
+  const p = P.tray[d.i];
+  const tlx = d.x - p.w * PC / 2, tly = d.y - d.lift - p.h * PC / 2;
+  const c = Math.round((tlx - BX) / PC), r = Math.round((tly - BY) / PC);
+  return { r, c, ok: fitsAt(p, r, c) };
+}
+pcv.addEventListener('pointerdown', e => {
+  if (!P || P.mode !== 'play' || drag) return;
+  const pt = toLocal(e);
+  if (pt.y < TRAY_Y - 10) return;
+  const i = Math.min(2, Math.max(0, Math.floor(pt.x / SLOT)));
+  if (!P.tray[i]) return;
+  e.preventDefault();
+  try { pcv.setPointerCapture(e.pointerId); } catch (_) {}
+  drag = { i, x: pt.x, y: pt.y, lift: e.pointerType === 'mouse' ? 0 : 80, id: e.pointerId };
+  drag.snap = snapFor(drag);
+  pcv.style.cursor = 'grabbing';
+});
+pcv.addEventListener('pointermove', e => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const pt = toLocal(e); drag.x = pt.x; drag.y = pt.y; drag.snap = snapFor(drag);
+});
+function endDrag(e, cancel) {
+  if (!drag || (e && e.pointerId !== drag.id)) return;
+  const d = drag; drag = null; pcv.style.cursor = '';
+  if (!cancel && d.snap && d.snap.ok && P.mode === 'play') place(d.i, d.snap.r, d.snap.c);
+}
+pcv.addEventListener('pointerup', e => endDrag(e, false));
+pcv.addEventListener('pointercancel', e => endDrag(e, true));
+pcv.addEventListener('contextmenu', e => e.preventDefault());
+
+function drawPack(now) {
+  const c = pctx;
+  c.clearRect(0, 0, PW, PH);
+  c.fillStyle = PWELL; rrect(c, BX - 8, BY - 8, PB * PC + 16, PB * PC + 16, 10);
+
+  let prev = null, hlColor = null;
+  const hlRows = new Set(), hlCols = new Set();
+  if (drag && drag.snap && drag.snap.ok) {
+    prev = drag.snap; const p = P.tray[drag.i]; hlColor = p.color;
+    const mine = new Set(p.cells.map(([dy, dx]) => (prev.r + dy) * PB + prev.c + dx));
+    const occ = (y, x) => P.grid[y][x] || mine.has(y * PB + x);
+    for (let y = 0; y < PB; y++) { let f = true; for (let x = 0; x < PB; x++) if (!occ(y, x)) { f = false; break; } if (f) hlRows.add(y); }
+    for (let x = 0; x < PB; x++) { let f = true; for (let y = 0; y < PB; y++) if (!occ(y, x)) { f = false; break; } if (f) hlCols.add(x); }
+  }
+  for (let y = 0; y < PB; y++) for (let x = 0; x < PB; x++) {
+    const px = BX + x * PC, py = BY + y * PC, v = P.grid[y][x];
+    if (v) block(c, px, py, PC, (hlRows.has(y) || hlCols.has(x)) ? hlColor : v);
+    else { c.fillStyle = PEMPTY; rrect(c, px + 2, py + 2, PC - 4, PC - 4, 5); }
+  }
+  if (prev) {
+    const p = P.tray[drag.i];
+    for (const [dy, dx] of p.cells) block(c, BX + (prev.c + dx) * PC, BY + (prev.r + dy) * PC, PC, p.color, .45);
+  }
+  // clear effects
+  P.fx = P.fx.filter(f => now - f.t < 340);
+  for (const f of P.fx) {
+    const k = Math.max(0, (now - f.t) / 340), s = PC * (1 - k);
+    block(c, BX + f.x * PC + (PC - s) / 2, BY + f.y * PC + (PC - s) / 2, s, k < .15 ? '#ffffff' : f.color, 1 - k * .8);
+  }
+  // tray
+  for (let i = 0; i < 3; i++) {
+    const p = P.tray[i];
+    if (!p || (drag && drag.i === i)) continue;
+    const s = Math.min(24, Math.floor(104 / Math.max(p.w, p.h)));
+    const ox = i * SLOT + SLOT / 2 - p.w * s / 2, oy = TRAY_Y + 64 - p.h * s / 2;
+    const a = (P.mode === 'play' && fitsAny(p)) ? 1 : .28;
+    for (const [dy, dx] of p.cells) block(c, ox + dx * s, oy + dy * s, s, p.color, a);
+  }
+  // dragged piece
+  if (drag) {
+    const p = P.tray[drag.i];
+    const tlx = drag.x - p.w * PC / 2, tly = drag.y - drag.lift - p.h * PC / 2;
+    for (const [dy, dx] of p.cells) block(c, tlx + dx * PC, tly + dy * PC, PC, p.color, .92);
+  }
+  // floating text
+  P.texts = P.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '22px Bungee, Impact, sans-serif';
+  for (const t of P.texts) {
+    const k = (now - t.t) / 900; if (k < 0) continue;
+    c.globalAlpha = 1 - k * k;
+    const y = t.y - 36 * k;
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, t.x, y);
+    c.fillStyle = t.color; c.fillText(t.text, t.x, y);
+  }
+  c.globalAlpha = 1;
+}
+
+// ================= shared helpers for the new games =================
+function bevelRect(c, x, y, w, h, color, alpha = 1) {
+  c.globalAlpha = alpha;
+  c.fillStyle = color; c.fillRect(x + 1, y + 1, w - 2, h - 2);
+  const e = Math.max(2, Math.min(w, h) * .18);
+  c.fillStyle = 'rgba(255,255,255,.32)'; c.fillRect(x + 1, y + 1, w - 2, e);
+  c.fillStyle = 'rgba(0,0,0,.26)'; c.fillRect(x + 1, y + h - 1 - e, w - 2, e);
+  c.globalAlpha = 1;
+}
+let BFIELD = tok('--brk-field', '#27315c');
+
+// ================= BRICKBREAK =================
+const BW = 360, BH = 540, BRW = 32, BRH = 16, BOX = 20, BOY = 56, PAD_Y = 500, PAD_H = 12, BR = 6;
+// Endless mode: a new row of bricks pushes the wall down every few seconds.
+// Bricks reaching the danger line end the game; the wall speeds up every ROWS_PER_LEVEL rows.
+const BCOLS = 10, DANGER_Y = PAD_Y - 40, ROWS_PER_LEVEL = 6, START_ROWS = 5;
+const dropEvery = lv => Math.max(3500, 9000 - (lv - 1) * 600);
+const HP_COLOR = { 1: '#6ccf86', 2: '#f4cc4a', 3: '#ef6670' };
+const ITEM_KIND = [
+  { k: 'W', label: '⟷', color: '#5c86f2', w: 4 },
+  { k: 'M', label: '●●', color: '#f39b4a', w: 4 },
+  { k: 'L', label: '♥', color: '#ef6670', w: 1 },
+];
+const bcv = $('brkCv'), bctx = bcv.getContext('2d');
+setupHiDPI(bcv, BW, BH, bctx);
+let bBest = load('brickbreak-best');
+let B = brkFresh();
+
+function brkFresh() {
+  return { level: 1, rows: 0, dropT: 0, slide: 0, score: 0, lives: 3, bricks: [], balls: [], items: [], fx: [],
+    px: BW / 2, pw: 64, wideT: 0, mode: 'ready', msg: null, msgT: 0, pop: null, reason: '', keys: { l: false, r: false } };
+}
+const brkSpeed = () => Math.min(520, 300 + (B.level - 1) * 14);
+function addRow(animate) {
+  const lv = B.level;
+  const pGap = Math.max(.08, .3 - lv * .02), p3 = Math.min(.35, (lv - 1) * .05), p2 = Math.min(.45, .15 + (lv - 1) * .05);
+  if (animate) { for (const k of B.bricks) k.y += BRH; B.slide = BRH; }
+  else for (const k of B.bricks) k.y += BRH;
+  let cols = [];
+  for (let c = 0; c < BCOLS; c++) if (Math.random() >= pGap) cols.push(c);
+  while (cols.length < 6) { const c = Math.floor(Math.random() * BCOLS); if (!cols.includes(c)) cols.push(c); }
+  for (const c of cols) {
+    const r = Math.random();
+    B.bricks.push({ x: BOX + c * BRW, y: BOY, hp: r < p3 ? 3 : r < p3 + p2 ? 2 : 1 });
+  }
+  B.rows++;
+  const nl = 1 + Math.floor(Math.max(0, B.rows - START_ROWS) / ROWS_PER_LEVEL);
+  if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); }
+  B.dropT = dropEvery(B.level);
+}
+function loadStage() {
+  B.bricks = []; B.items = []; B.fx = [];
+  for (let i = 0; i < START_ROWS; i++) addRow(false);
+  resetBall();
+}
+function resetBall() {
+  B.balls = [{ x: B.px, y: PAD_Y - BR - 1, vx: 0, vy: 0, stuck: true }];
+  B.pw = 64; B.wideT = 0;
+}
+function launch() {
+  for (const b of B.balls) if (b.stuck) {
+    const s = brkSpeed(), a = Math.random() * .6 - .3;
+    b.vx = s * Math.sin(a); b.vy = -s * Math.cos(a); b.stuck = false;
+  }
+}
+function brkStart() { B = brkFresh(); B.mode = 'play'; loadStage(); brkOverlay(); }
+function brkPause() {
+  if (B.mode === 'play') B.mode = 'pause'; else if (B.mode === 'pause') B.mode = 'play';
+  B.keys.l = B.keys.r = false; brkOverlay();
+}
+function brkOver() {
+  B.mode = 'over'; sfx('over');
+  if (B.score > bBest) { bBest = B.score; save('brickbreak-best', bBest); }
+  brkOverlay();
+}
+function brkOverlay() {
+  const o = $('bOverlay');
+  if (B.mode === 'play') { o.hidden = true; return; }
+  o.hidden = false; $('bOvScore').hidden = true;
+  if (B.mode === 'ready') {
+    $('bOvTitle').textContent = 'BRICKBREAK';
+    $('bOvText').innerHTML = '벽돌 벽이 몇 초마다 한 줄씩 내려와요.<br>빨간 선에 닿기 전에 깨세요. 끝없이 이어지고 점점 빨라져요.<br>노랑·빨강 벽돌은 여러 번 맞혀야 해요.';
+    $('bOvBtn').textContent = '시작';
+  } else if (B.mode === 'pause') {
+    $('bOvTitle').textContent = '일시정지';
+    $('bOvText').textContent = 'P 또는 Esc로 계속합니다.';
+    $('bOvBtn').textContent = '계속';
+  } else {
+    $('bOvTitle').textContent = '게임 오버';
+    $('bOvText').textContent = `${B.reason} 레벨 ${B.level}까지 버텼어요.` + (B.score >= bBest && B.score > 0 ? ' 새 최고 기록입니다.' : '');
+    $('bOvScore').hidden = false; $('bOvScore').textContent = fmt(B.score);
+    $('bOvBtn').textContent = '다시 시작';
+  }
+}
+$('bOvBtn').addEventListener('click', () => { if (B.mode === 'pause') brkPause(); else brkStart(); });
+brkOverlay();
+
+function hitBrick(k) {
+  if (k.hp === Infinity) { sfx('wall'); return; }
+  k.hp--; B.score += 10; sfx('brick');
+  if (k.hp <= 0) {
+    B.score += 20;
+    B.fx.push({ x: k.x, y: k.y, t: performance.now() });
+    if (Math.random() < .16) {
+      const tot = ITEM_KIND.reduce((a, i) => a + i.w, 0);
+      let r = Math.random() * tot, kind = ITEM_KIND[0];
+      for (const i of ITEM_KIND) { r -= i.w; if (r < 0) { kind = i; break; } }
+      B.items.push({ x: k.x + BRW / 2, y: k.y + BRH / 2, kind });
+    }
+  }
+}
+function applyItem(kind) {
+  sfx('item');
+  if (kind.k === 'W') { B.pw = 104; B.wideT = 12000; }
+  else if (kind.k === 'L') { B.lives = Math.min(5, B.lives + 1); }
+  else if (kind.k === 'M') {
+    const src = B.balls.find(b => !b.stuck) || B.balls[0];
+    if (!src) return;
+    if (src.stuck) launch();
+    const add = [];
+    for (const a of [-.4, .4]) {
+      const c = Math.cos(a), s = Math.sin(a);
+      add.push({ x: src.x, y: src.y, vx: src.vx * c - src.vy * s, vy: src.vx * s + src.vy * c, stuck: false });
+    }
+    B.balls.push(...add);
+  }
+}
+function stepBall(b, s) {
+  const px = b.x, py = b.y;
+  b.x += b.vx * s; b.y += b.vy * s;
+  if (b.x < BR) { b.x = BR; b.vx = Math.abs(b.vx); }
+  if (b.x > BW - BR) { b.x = BW - BR; b.vx = -Math.abs(b.vx); }
+  if (b.y < BR) { b.y = BR; b.vy = Math.abs(b.vy); }
+  // paddle
+  if (b.vy > 0 && b.y + BR >= PAD_Y && py + BR <= PAD_Y + 2 && Math.abs(b.x - B.px) <= B.pw / 2 + BR) {
+    const off = Math.max(-1, Math.min(1, (b.x - B.px) / (B.pw / 2)));
+    const a = off * 1.05, sp = brkSpeed();
+    b.vx = sp * Math.sin(a); b.vy = -sp * Math.cos(a); b.y = PAD_Y - BR; sfx('paddle');
+    return;
+  }
+  if (b.y > BH + BR) { b.dead = true; return; }
+  // bricks
+  for (const k of B.bricks) {
+    if (k.hp <= 0) continue;
+    const cx = Math.max(k.x, Math.min(b.x, k.x + BRW)), cy = Math.max(k.y, Math.min(b.y, k.y + BRH));
+    const dx = b.x - cx, dy = b.y - cy;
+    if (dx * dx + dy * dy < BR * BR) {
+      if (px < k.x || px > k.x + BRW) b.vx = -b.vx; else b.vy = -b.vy;
+      b.x = px; b.y = py;
+      hitBrick(k);
+      break;
+    }
+  }
+}
+function updateBrk(dt) {
+  if (B.mode !== 'play') return;
+  const s = dt / 1000;
+  if (B.msg) { B.msgT -= dt; if (B.msgT <= 0) B.msg = null; }
+  if (B.slide > 0) B.slide = Math.max(0, B.slide - BRH * dt / 220);
+  // the wall only advances while a ball is in play
+  if (B.balls.some(b => !b.stuck)) {
+    B.dropT -= dt;
+    if (B.dropT <= 0) addRow(true);
+  }
+  if (B.bricks.some(k => k.y + BRH >= DANGER_Y)) { B.reason = '벽돌이 빨간 선에 닿았어요.'; brkOver(); return; }
+  const dir = (B.keys.r ? 1 : 0) - (B.keys.l ? 1 : 0);
+  if (dir) B.px += dir * 460 * s;
+  B.px = Math.max(B.pw / 2, Math.min(BW - B.pw / 2, B.px));
+  if (B.wideT > 0) { B.wideT -= dt; if (B.wideT <= 0) B.pw = 64; }
+
+  for (const b of B.balls) {
+    if (b.stuck) { b.x = B.px; b.y = PAD_Y - BR - 1; continue; }
+    const dist = Math.hypot(b.vx, b.vy) * s, steps = Math.max(1, Math.ceil(dist / 4));
+    for (let i = 0; i < steps && !b.dead; i++) stepBall(b, s / steps);
+  }
+  B.bricks = B.bricks.filter(k => k.hp > 0);
+  B.balls = B.balls.filter(b => !b.dead);
+  if (!B.balls.length) {
+    B.lives--;
+    if (B.lives <= 0) { B.reason = '목숨을 모두 잃었어요.'; brkOver(); return; }
+    resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose');
+  }
+  for (const it of B.items) {
+    it.y += 150 * s;
+    if (it.y + 8 >= PAD_Y && it.y - 8 <= PAD_Y + PAD_H && Math.abs(it.x - B.px) <= B.pw / 2 + 14) { it.got = true; applyItem(it.kind); }
+  }
+  B.items = B.items.filter(it => !it.got && it.y < BH + 20);
+  if (!B.bricks.length) {
+    B.score += 300; addRow(true); addRow(false);
+    B.pop = { text: '싹쓸이 +300', t: performance.now() }; sfx('stage');
+  }
+}
+function drawBrk(now) {
+  const c = bctx;
+  const g = c.createLinearGradient(0, 0, 0, BH);
+  g.addColorStop(0, BFIELD); g.addColorStop(1, tok('--brk-bg', '#3b4878'));
+  c.fillStyle = g; c.fillRect(0, 0, BW, BH);
+  // time until the next row, as a thin bar along the top
+  if (B.mode !== 'ready') {
+    const q = Math.max(0, Math.min(1, B.dropT / dropEvery(B.level)));
+    c.fillStyle = 'rgba(255,255,255,.12)'; c.fillRect(0, 0, BW, 5);
+    c.fillStyle = q < .25 ? '#ef6670' : tok('--accent', '#ffb547'); c.fillRect(0, 0, BW * (1 - q), 5);
+  }
+  // danger line: brighter as the wall gets close
+  const lowest = B.bricks.reduce((m, k) => Math.max(m, k.y + BRH), 0);
+  const near = Math.max(0, Math.min(1, 1 - (DANGER_Y - lowest) / 120));
+  c.strokeStyle = `rgba(239,102,112,${.35 + .6 * near})`; c.lineWidth = 2; c.setLineDash([8, 6]);
+  c.beginPath(); c.moveTo(0, DANGER_Y + .5); c.lineTo(BW, DANGER_Y + .5); c.stroke(); c.setLineDash([]);
+  for (const k of B.bricks) bevelRect(c, k.x, k.y - B.slide, BRW, BRH, k.hp === Infinity ? '#9a97b8' : HP_COLOR[Math.min(3, k.hp)]);
+  B.fx = B.fx.filter(f => now - f.t < 300);
+  for (const f of B.fx) {
+    const q = (now - f.t) / 300;
+    c.globalAlpha = 1 - q; c.fillStyle = '#ffffff';
+    c.fillRect(f.x + BRW * q / 2, f.y + BRH * q / 2, BRW * (1 - q), BRH * (1 - q));
+    c.globalAlpha = 1;
+  }
+  for (const it of B.items) {
+    c.fillStyle = it.kind.color; rrect(c, it.x - 15, it.y - 9, 30, 18, 9);
+    c.fillStyle = '#ffffff'; c.font = '600 12px "IBM Plex Sans KR", system-ui, sans-serif';
+    c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(it.kind.label, it.x, it.y + 1);
+  }
+  // paddle
+  c.fillStyle = B.wideT > 0 ? '#7ea0ff' : tok('--accent', '#ffb547');
+  rrect(c, B.px - B.pw / 2, PAD_Y, B.pw, PAD_H, 6);
+  c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(B.px - B.pw / 2 + 5, PAD_Y + 2, B.pw - 10, 3);
+  // balls
+  c.fillStyle = tok('--ball', '#ffffff');
+  for (const b of B.balls) { c.beginPath(); c.arc(b.x, b.y, BR, 0, Math.PI * 2); c.fill(); }
+  // messages
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  let msg = null;
+  if (B.msg === 'miss') msg = '공을 놓쳤어요';
+  else if (B.mode === 'play' && B.balls.some(b => b.stuck)) msg = '탭 또는 Space로 발사';
+  if (msg) {
+    c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+    c.lineWidth = 5; c.strokeStyle = BFIELD; c.strokeText(msg, BW / 2, 360);
+    c.fillStyle = tok('--ink', '#ffffff'); c.fillText(msg, BW / 2, 360);
+  }
+  if (B.pop) {
+    const q = (now - B.pop.t) / 1200;
+    if (q >= 1) B.pop = null;
+    else {
+      c.globalAlpha = 1 - q * q; c.font = '24px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+      c.lineWidth = 5; c.strokeStyle = BFIELD; c.strokeText(B.pop.text, BW / 2, 300 - 20 * q);
+      c.fillStyle = tok('--accent', '#ffb547'); c.fillText(B.pop.text, BW / 2, 300 - 20 * q);
+      c.globalAlpha = 1;
+    }
+  }
+  setText('bScore', B.score); setText('bStage', B.level);
+  setText('bLives', '♥'.repeat(Math.max(0, B.lives)) || '–'); setText('bBest', Math.max(bBest, B.score));
+}
+function brkLocalX(e) { const r = bcv.getBoundingClientRect(); return (e.clientX - r.left) * BW / r.width; }
+let brkTouch = null;
+bcv.addEventListener('pointerdown', e => {
+  if (B.mode !== 'play') return;
+  e.preventDefault();
+  try { bcv.setPointerCapture(e.pointerId); } catch (_) {}
+  brkTouch = e.pointerId;
+  B.px = brkLocalX(e);
+  if (B.balls.some(b => b.stuck) && !B.msg) launch();
+});
+bcv.addEventListener('pointermove', e => {
+  if (B.mode !== 'play') return;
+  if (e.pointerType === 'mouse' || e.pointerId === brkTouch) B.px = brkLocalX(e);
+});
+const brkUp = e => { if (e.pointerId === brkTouch) brkTouch = null; };
+bcv.addEventListener('pointerup', brkUp); bcv.addEventListener('pointercancel', brkUp);
+bcv.addEventListener('contextmenu', e => e.preventDefault());
+
+// ================= BRICKSTACK =================
+const SW = 360, SH = 540, SBH = 26, BASE_W = 200, GROUND = SH - 70;
+const scv = $('stkCv'), sctx = scv.getContext('2d');
+setupHiDPI(scv, SW, SH, sctx);
+let tBest = load('brickstack-best');
+let T = stkFresh();
+
+function stkFresh() {
+  return { stack: [{ x: (SW - BASE_W) / 2, w: BASE_W }], mov: null, debris: [], cam: 0,
+    score: 0, perfect: 0, mode: 'ready', pop: null };
+}
+// world y of the top edge of block i (0 = base); camera shifts the world down as the tower grows
+const blockY = i => GROUND - (i + 1) * SBH;
+function spawnMov() {
+  const top = T.stack[T.stack.length - 1], n = T.stack.length;
+  const fromLeft = n % 2 === 1;
+  T.mov = { x: fromLeft ? -top.w * .2 : SW - top.w * .8, w: top.w, dir: fromLeft ? 1 : -1, sp: Math.min(150 + n * 9, 470) };
+}
+function stkStart() { T = stkFresh(); T.mode = 'play'; spawnMov(); $('tOverlay').hidden = true; }
+function stkOver() {
+  T.mode = 'over'; T.mov = null; sfx('over');
+  const rec = T.score > tBest;
+  if (rec) { tBest = T.score; save('brickstack-best', tBest); }
+  $('tOvText').textContent = rec && T.score > 0 ? '새 최고 기록입니다.' : '벽돌이 아래 벽돌을 벗어났어요.';
+  $('tOvScore').textContent = `${fmt(T.score)}층`;
+  setTimeout(() => { if (T.mode === 'over') $('tOverlay').hidden = false; }, 700);
+}
+$('tRestart').addEventListener('click', stkStart);
+// paused when the app goes to the background, the screen is left or Settings opens; the next tap resumes (without dropping)
+function stkPause() { if (T.mode === 'play') T.mode = 'pause'; }
+function stkTap() {
+  if (T.mode === 'ready') { stkStart(); return; }
+  if (T.mode === 'pause') { T.mode = 'play'; return; }
+  if (T.mode !== 'play' || !T.mov) return;
+  const top = T.stack[T.stack.length - 1], m = T.mov, lvl = T.stack.length;
+  const left = Math.max(m.x, top.x), right = Math.min(m.x + m.w, top.x + top.w), ov = right - left;
+  if (ov <= 0) {
+    T.debris.push({ x: m.x, w: m.w, y: blockY(lvl), vy: 0, i: lvl });
+    stkOver(); return;
+  }
+  let nx = left, nw = ov;
+  if (Math.abs(m.x - top.x) <= 4) {
+    nx = top.x; nw = top.w; T.perfect++;
+    if (T.perfect >= 3) { const grow = Math.min(10, BASE_W - nw); nx -= grow / 2; nw += grow; }
+    T.pop = { text: T.perfect >= 2 ? `퍼펙트 ×${T.perfect}` : '퍼펙트!', t: performance.now() };
+    sfx('perfect');
+  } else {
+    T.perfect = 0; sfx('stack', T.stack.length);
+    if (m.x < top.x) T.debris.push({ x: m.x, w: top.x - m.x, y: blockY(lvl), vy: 0, i: lvl });
+    else T.debris.push({ x: top.x + top.w, w: m.x + m.w - (top.x + top.w), y: blockY(lvl), vy: 0, i: lvl });
+  }
+  T.stack.push({ x: nx, w: nw });
+  T.score = T.stack.length - 1;
+  spawnMov();
+}
+function updateStk(dt) {
+  const s = dt / 1000;
+  if (T.mov && T.mode === 'play') {
+    const m = T.mov;
+    m.x += m.dir * m.sp * s;
+    const lo = -m.w * .2, hi = SW - m.w * .8;
+    if (m.x < lo) { m.x = lo; m.dir = 1; }
+    if (m.x > hi) { m.x = hi; m.dir = -1; }
+  }
+  for (const d of T.debris) { d.vy += 1100 * s; d.y += d.vy * s; }
+  T.debris = T.debris.filter(d => d.y + T.cam < SH + 60);
+  const target = Math.max(0, T.stack.length * SBH - 300);
+  T.cam += (target - T.cam) * Math.min(1, s * 6);
+}
+function drawStk(now) {
+  const c = sctx, h = T.score;
+  const g = c.createLinearGradient(0, 0, 0, SH);
+  const lite = tok('--is-light', '0') === '1';
+  g.addColorStop(0, lite ? `hsl(${225 - h * 4}, 62%, 82%)` : `hsl(${225 - h * 4}, 48%, 56%)`);
+  g.addColorStop(1, lite ? `hsl(${245 - h * 4}, 48%, 66%)` : `hsl(${245 - h * 4}, 40%, 32%)`);
+  c.fillStyle = g; c.fillRect(0, 0, SW, SH);
+  c.save(); c.translate(0, T.cam);
+  // ground
+  c.fillStyle = lite ? 'rgba(40,35,80,.18)' : 'rgba(15,13,30,.45)'; c.fillRect(0, GROUND, SW, SH);
+  T.stack.forEach((b, i) => bevelRect(c, b.x, blockY(i), b.w, SBH, PALETTE[i % PALETTE.length]));
+  for (const d of T.debris) bevelRect(c, d.x, d.y, d.w, SBH, PALETTE[d.i % PALETTE.length], .85);
+  if (T.mov && (T.mode === 'play' || T.mode === 'pause')) bevelRect(c, T.mov.x, blockY(T.stack.length), T.mov.w, SBH, PALETTE[T.stack.length % PALETTE.length]);
+  c.restore();
+  // score & prompts
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '52px Bungee, Impact, sans-serif';
+  c.fillStyle = lite ? 'rgba(33,28,49,.85)' : 'rgba(255,255,255,.9)'; c.fillText(String(T.score), SW / 2, 64);
+  if (T.mode === 'ready') {
+    c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+    c.fillStyle = lite ? '#211c31' : '#ffffff'; c.fillText('탭해서 시작', SW / 2, 200);
+  } else if (T.mode === 'pause') {
+    c.fillStyle = lite ? 'rgba(255,255,255,.55)' : 'rgba(15,13,30,.45)'; c.fillRect(0, 0, SW, SH);
+    c.font = '24px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+    c.fillStyle = lite ? '#211c31' : '#ffffff'; c.fillText('일시정지', SW / 2, 200);
+    c.font = '600 15px "IBM Plex Sans KR", system-ui, sans-serif'; c.fillText('탭해서 계속', SW / 2, 234);
+  }
+  if (T.pop) {
+    const q = (now - T.pop.t) / 800;
+    if (q >= 1) T.pop = null;
+    else {
+      c.globalAlpha = 1 - q; c.font = '22px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+      c.fillStyle = tok('--accent', '#ffb547'); c.fillText(T.pop.text, SW / 2, 112 - 16 * q);
+      c.globalAlpha = 1;
+    }
+  }
+  setText('tScore', T.score); setText('tBest', Math.max(tBest, T.score));
+}
+scv.addEventListener('pointerdown', e => { e.preventDefault(); stkTap(); });
+scv.addEventListener('contextmenu', e => e.preventDefault());
+
+// keyboard for the new games
+addEventListener('keydown', e => {
+  if (current === 'brk') {
+    if (e.code === 'ArrowLeft') { B.keys.l = true; e.preventDefault(); }
+    else if (e.code === 'ArrowRight') { B.keys.r = true; e.preventDefault(); }
+    else if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault(); if (e.repeat) return;
+      if (B.mode === 'play') { if (!B.msg) launch(); }
+      else if (B.mode === 'pause') brkPause(); else brkStart();
+    }
+    else if (e.code === 'KeyP' || e.code === 'Escape') { e.preventDefault(); if (B.mode === 'play' || B.mode === 'pause') brkPause(); }
+  } else if (current === 'stk') {
+    if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowDown') {
+      e.preventDefault(); if (e.repeat) return;
+      if (T.mode === 'over') { if ($('tOverlay').hidden === false) stkStart(); } else stkTap();
+    }
+  }
+});
+addEventListener('keyup', e => {
+  if (e.code === 'ArrowLeft') B.keys.l = false;
+  if (e.code === 'ArrowRight') B.keys.r = false;
+});
+addEventListener('blur', () => { if (current === 'brk' && B.mode === 'play') brkPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'brk' && B.mode === 'play') brkPause(); });
+addEventListener('blur', () => { if (current === 'stk') stkPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'stk') stkPause(); });
+
+// menu art
+function artBrk() {
+  const a = $('artBrk'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  x.fillStyle = BFIELD; x.fillRect(4, 4, 132, 132);
+  const rows = ['3333333', '2222222', '1111.11', '11..1.1'];
+  rows.forEach((row, r) => [...row].forEach((ch, cc) => { if (ch !== '.') bevelRect(x, 10 + cc * 17.2, 14 + r * 10, 17.2, 10, HP_COLOR[ch]); }));
+  x.fillStyle = '#ffffff'; x.beginPath(); x.arc(84, 92, 4, 0, Math.PI * 2); x.fill();
+  x.fillStyle = tok('--accent', '#ffb547'); rrect(x, 52, 118, 40, 7, 4);
+}
+function artStk() {
+  const a = $('artStk'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  const widths = [90, 84, 84, 76, 70, 70, 62];
+  let left = 25;
+  widths.forEach((w, i) => { left += i ? (i % 2 ? 4 : -1) : 0; bevelRect(x, left, 120 - (i + 1) * 13, w, 13, PALETTE[i % PALETTE.length]); });
+  bevelRect(x, 8, 120 - 8 * 13 - 6, 58, 13, PALETTE[7 % PALETTE.length]);
+}
+artBrk(); artStk();
+
+// ================= BRICKPOP =================
+const OC = 10, OR = 12, OS = 32, OX = 20, OY = 20, OW = 360, OH = 440;
+// Endless mode: start half full; every few pops a new row rises from the bottom.
+// A column taller than the board ends the game. Rows come faster (and a 5th color joins) as the level climbs.
+const POP_START_ROWS = 6, POP_ROWS_PER_LEVEL = 8, POP_EXTRA = '#b47cf2';
+const riseEvery = lv => Math.max(1, 5 - Math.ceil(lv / 2));   // pops per new row: 4,4,3,3,2,2,1…
+const POP_COLORS = ['#ef6670', '#f4cc4a', '#5c86f2', '#6ccf86'];
+const ocv = $('popCv'), octx = ocv.getContext('2d');
+setupHiDPI(ocv, OW, OH, octx);
+let oBest = load('brickpop-best');
+let PO = null, oHover = null, oid = 0;
+
+// cols[c] holds cells bottom-to-top; each cell keeps its own drawn position (vx, vy) that eases to its slot
+const oSlotX = c => OX + c * OS, oSlotY = i => OY + (OR - 1 - i) * OS;
+const popColors = () => PO.level >= 3 ? [...POP_COLORS, POP_EXTRA] : POP_COLORS;
+function popRandRow() { const cs = popColors(); return Array.from({ length: OC }, () => cs[Math.floor(Math.random() * cs.length)]); }
+function popNew() {
+  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [], level: 1, rows: 0, movesLeft: riseEvery(1), next: null };
+  for (let c = 0; c < OC; c++) {
+    const col = [];
+    for (let i = 0; i < POP_START_ROWS; i++)
+      col.push({ id: oid++, color: POP_COLORS[Math.floor(Math.random() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
+    PO.cols.push(col);
+  }
+  PO.next = popRandRow();
+  oHover = null; $('oOverlay').hidden = true; popStats(); popSave();
+}
+const POP_SAVE = 'brickpop-save';
+function popSave() {
+  if (PO.mode !== 'play') { dropKey(POP_SAVE); return; }
+  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next });
+}
+function popResume() {
+  const s = loadJSON(POP_SAVE);
+  if (!s || !Array.isArray(s.cols) || !Array.isArray(s.next) || s.next.length !== OC) return false;
+  PO = { cols: [], score: +s.score || 0, mode: 'play', fx: [], texts: [], level: +s.level || 1, rows: +s.rows || 0,
+    movesLeft: +s.movesLeft || 1, next: s.next };
+  PO.cols = s.cols.filter(col => Array.isArray(col) && col.length).slice(0, OC)
+    .map((col, c) => col.map((color, i) => ({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 })));
+  oHover = null; $('oOverlay').hidden = true; popStats();
+  return true;
+}
+// push the waiting row in at the bottom; returns false if that overflowed the board
+function popRise() {
+  while (PO.cols.length < OC) PO.cols.push([]);
+  PO.next.forEach((color, c) => PO.cols[c].unshift({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(-1) }));
+  PO.rows++;
+  const nl = 1 + Math.floor(PO.rows / POP_ROWS_PER_LEVEL);
+  if (nl > PO.level) { PO.level = nl; PO.texts.push({ text: `레벨 ${nl}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() }); sfx('stage'); }
+  PO.movesLeft = riseEvery(PO.level);
+  PO.next = popRandRow();
+  sfx('lock');
+  if (PO.cols.some(col => col.length > OR)) { popOver(); return false; }
+  return true;
+}
+function popGroup(c, i) {
+  const col = PO.cols[c]; if (!col || !col[i]) return [];
+  const color = col[i].color, seen = new Set([c + ',' + i]), out = [[c, i]], stack = [[c, i]];
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+      const k = nx + ',' + ny;
+      if (seen.has(k)) continue;
+      const cell = PO.cols[nx] && PO.cols[nx][ny];
+      if (cell && cell.color === color) { seen.add(k); out.push([nx, ny]); stack.push([nx, ny]); }
+    }
+  }
+  return out;
+}
+const popLeft = () => PO.cols.reduce((a, col) => a + col.length, 0);
+function popHasMoves() {
+  for (let c = 0; c < PO.cols.length; c++) for (let i = 0; i < PO.cols[c].length; i++) {
+    const color = PO.cols[c][i].color;
+    if (PO.cols[c][i + 1] && PO.cols[c][i + 1].color === color) return true;
+    if (PO.cols[c + 1] && PO.cols[c + 1][i] && PO.cols[c + 1][i].color === color) return true;
+  }
+  return false;
+}
+const popPts = n => (n - 2) * (n - 2);
+function popAt(c, i) {
+  if (PO.mode !== 'play') return;
+  const g = popGroup(c, i);
+  if (g.length < 2) return;
+  const now = performance.now(), dead = new Set(g.map(([x, y]) => PO.cols[x][y].id));
+  let sx = 0, sy = 0;
+  for (const [x, y] of g) { const cell = PO.cols[x][y]; PO.fx.push({ x: cell.vx, y: cell.vy, color: cell.color, t: now }); sx += cell.vx; sy += cell.vy; }
+  const pts = popPts(g.length);
+  PO.score += pts;
+  PO.texts.push({ text: pts ? `+${fmt(pts)}` : '+0', x: sx / g.length + OS / 2, y: sy / g.length + OS / 2, t: now });
+  PO.cols = PO.cols.map(col => col.filter(cell => !dead.has(cell.id))).filter(col => col.length);
+  sfx(g.length >= 6 ? 'clear' : 'place', Math.min(5, Math.floor(g.length / 4)));
+  oHover = null;
+  PO.movesLeft--;
+  if (!popLeft()) {
+    PO.score += 1000;
+    PO.texts.push({ text: '판 비우기 +1,000', x: OW / 2, y: OY + OR * OS / 2, t: now + 200 });
+    for (let k = 0; k < 3 && PO.mode === 'play'; k++) popRise();
+  } else if (PO.movesLeft <= 0) popRise();
+  // never leave the player without a move: keep raising rows until a pair exists (or the board overflows)
+  while (PO.mode === 'play' && !popHasMoves()) popRise();
+  popStats(); popSave();
+}
+function popOver() {
+  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE);
+  const rec = PO.score > oBest;
+  if (rec) { oBest = PO.score; save('brickpop-best', oBest); }
+  $('oOvTitle').textContent = '게임 오버';
+  $('oOvText').textContent = `벽돌이 맨 위를 넘었어요. 레벨 ${PO.level}까지 왔어요.` + (rec ? ' 새 최고 기록입니다.' : '');
+  $('oOvScore').textContent = fmt(PO.score);
+  setTimeout(() => { if (PO.mode === 'over') $('oOverlay').hidden = false; }, 700);
+}
+function popStats() {
+  setText('oScore', PO.score); setText('oLevel', PO.level); setText('oNext', `${PO.movesLeft}번`); setText('oBest', Math.max(oBest, PO.score));
+  const n = oHover ? oHover.length : 0;
+  setText('oPreview', n >= 2 ? `${n}개 · +${fmt(popPts(n))}` : '');
+}
+function popCell(e) {
+  const r = ocv.getBoundingClientRect();
+  const x = (e.clientX - r.left) * OW / r.width, y = (e.clientY - r.top) * OH / r.height;
+  const c = Math.floor((x - OX) / OS), i = OR - 1 - Math.floor((y - OY) / OS);
+  if (c < 0 || i < 0 || !PO.cols[c] || !PO.cols[c][i]) return null;
+  return [c, i];
+}
+ocv.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || PO.mode !== 'play') return;
+  const at = popCell(e); const g = at ? popGroup(at[0], at[1]) : [];
+  oHover = g.length >= 2 ? g : null; popStats();
+});
+ocv.addEventListener('pointerleave', () => { oHover = null; popStats(); });
+ocv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const at = popCell(e); if (at) popAt(at[0], at[1]);
+  if (e.pointerType === 'mouse') { const a2 = popCell(e); const g = a2 ? popGroup(a2[0], a2[1]) : []; oHover = g.length >= 2 ? g : null; popStats(); }
+});
+ocv.addEventListener('contextmenu', e => e.preventDefault());
+$('oRestart').addEventListener('click', popNew);
+$('oNew').addEventListener('click', popNew);
+
+function updatePop(dt) {
+  const s = dt / 1000, v = 1300 * s;
+  PO.cols.forEach((col, c) => col.forEach((cell, i) => {
+    const tx = oSlotX(c), ty = oSlotY(i);
+    cell.vx += Math.max(-v, Math.min(v, tx - cell.vx));
+    cell.vy += Math.max(-v, Math.min(v, ty - cell.vy));
+  }));
+}
+function drawPop(now) {
+  const c = octx;
+  c.clearRect(0, 0, OW, OH);
+  c.fillStyle = PWELL; rrect(c, OX - 8, OY - 8, OC * OS + 16, OR * OS + 16, 10);
+  c.fillStyle = PEMPTY;
+  for (let x = 0; x < OC; x++) for (let y = 0; y < OR; y++) rrect(c, OX + x * OS + 3, OY + y * OS + 3, OS - 6, OS - 6, 4);
+  // warn when a column is one row from the top
+  if (PO.mode === 'play' && PO.cols.some(col => col.length >= OR)) {
+    c.fillStyle = `rgba(239,102,112,${.2 + .12 * Math.sin(now / 160)})`;
+    c.fillRect(OX, OY, OC * OS, OS);
+  }
+  // the row that rises next, as a strip under the board
+  if (PO.next) PO.next.forEach((color, x) => bevelRect(c, OX + x * OS + 3, OY + OR * OS + 14, OS - 6, 12, color, PO.movesLeft <= 1 ? .95 : .6));
+  c.save(); c.beginPath(); c.rect(OX - 8, OY - 8, OC * OS + 16, OR * OS + 16); c.clip();
+  const hov = new Set((oHover || []).map(([x, y]) => PO.cols[x] && PO.cols[x][y] && PO.cols[x][y].id));
+  for (const col of PO.cols) for (const cell of col) {
+    block(c, cell.vx, cell.vy, OS, cell.color);
+    if (hov.has(cell.id)) { c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(cell.vx + 1, cell.vy + 1, OS - 2, OS - 2); }
+  }
+  c.restore();
+  PO.fx = PO.fx.filter(f => now - f.t < 280);
+  for (const f of PO.fx) {
+    const q = Math.max(0, (now - f.t) / 280), s = OS * (1 - q);
+    block(c, f.x + (OS - s) / 2, f.y + (OS - s) / 2, s, q < .2 ? '#ffffff' : f.color, 1 - q * .7);
+  }
+  PO.texts = PO.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+  for (const t of PO.texts) {
+    const q = (now - t.t) / 900; if (q < 0) continue;
+    c.globalAlpha = 1 - q * q;
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, t.x, t.y - 30 * q);
+    c.fillStyle = tok('--ink', '#ffffff'); c.fillText(t.text, t.x, t.y - 30 * q);
+  }
+  c.globalAlpha = 1;
+}
+if (!popResume()) popNew();
+
+// ================= BRICKSLIDE =================
+const LC = 8, LR = 10, LS = 40, LX = 20, LY = 40, LW = 360, LH = 480;
+const LEN_COLOR = { 1: '#56cfe1', 2: '#6ccf86', 3: '#f4cc4a', 4: '#ef6670' };
+const lcv = $('sldCv'), lctx = lcv.getContext('2d');
+setupHiDPI(lcv, LW, LH, lctx);
+let lBest = load('brickslide-best');
+let SL = null, lid = 0, ldrag = null;
+
+function sldOcc() {
+  const g = Array.from({ length: LR }, () => Array(LC).fill(null));
+  for (const b of SL.bars) if (b.r >= 0 && b.r < LR) for (let k = 0; k < b.len; k++) g[b.r][b.c + k] = b;
+  return g;
+}
+function sldGravity() {
+  let moved = true;
+  while (moved) {
+    moved = false;
+    const g = sldOcc();
+    for (const b of [...SL.bars].sort((a, z) => z.r - a.r)) {
+      if (b.r + 1 >= LR) continue;
+      let ok = true;
+      for (let k = 0; k < b.len; k++) if (g[b.r + 1][b.c + k]) { ok = false; break; }
+      if (ok) {
+        for (let k = 0; k < b.len; k++) { g[b.r][b.c + k] = null; g[b.r + 1][b.c + k] = b; }
+        b.r++; moved = true;
+      }
+    }
+  }
+}
+function sldGenRow(r, animate) {
+  const row = [];
+  let c = 0, filled = 0;
+  while (c < LC) {
+    if (Math.random() < .3) { c++; continue; }
+    const len = 1 + Math.floor(Math.random() * Math.min(4, LC - c));
+    row.push({ id: lid++, r, c, len, vx: c, vy: animate ? r + 1 : r });
+    c += len; filled += len;
+  }
+  if (filled >= LC) { const last = row.pop(); filled -= last.len; }
+  if (!row.length) row.push({ id: lid++, r, c: 0, len: 2, vx: 0, vy: animate ? r + 1 : r });
+  SL.bars.push(...row);
+}
+function sldRise(animate) {
+  for (const b of SL.bars) b.r--;
+  sldGenRow(LR - 1, animate);
+}
+function sldNew() {
+  SL = { bars: [], score: 0, lines: 0, phase: 'idle', rise: false, chain: 0, clearT: 0, mode: 'play', texts: [] };
+  for (let k = 0; k < 4; k++) sldRise(false);
+  sldGravity();
+  for (const b of SL.bars) { b.vx = b.c; b.vy = b.r - LR; }
+  SL.phase = 'anim';
+  ldrag = null; $('lOverlay').hidden = true; sldStats(); dropKey(SLD_SAVE);
+}
+const SLD_SAVE = 'brickslide-save';
+function sldSave() {
+  if (SL.mode !== 'play') { dropKey(SLD_SAVE); return; }
+  saveJSON(SLD_SAVE, { bars: SL.bars.map(b => [b.r, b.c, b.len]), score: SL.score, lines: SL.lines });
+}
+function sldResume() {
+  const s = loadJSON(SLD_SAVE);
+  if (!s || !Array.isArray(s.bars) || !s.bars.length) return false;
+  SL = { bars: [], score: +s.score || 0, lines: +s.lines || 0, phase: 'anim', rise: false, chain: 0, clearT: 0, mode: 'play', texts: [] };
+  for (const [r, c, len] of s.bars) if (r >= 0 && r < LR && c >= 0 && len >= 1 && c + len <= LC) SL.bars.push({ id: lid++, r, c, len, vx: c, vy: r - LR });
+  if (!SL.bars.length) return false;
+  ldrag = null; $('lOverlay').hidden = true; sldStats();
+  return true;
+}
+function sldFullRows() {
+  const g = sldOcc(), rows = [];
+  for (let r = 0; r < LR; r++) if (g[r].every(Boolean)) rows.push(r);
+  return rows;
+}
+function sldCanMove() {
+  const g = sldOcc();
+  return SL.bars.some(b => (b.c > 0 && !g[b.r][b.c - 1]) || (b.c + b.len < LC && !g[b.r][b.c + b.len]));
+}
+function sldCheck() {
+  const rows = sldFullRows();
+  if (rows.length) {
+    SL.chain++;
+    for (const b of SL.bars) if (rows.includes(b.r)) b.clearing = true;
+    const pts = rows.length * 100 * SL.chain;
+    SL.score += pts; SL.lines += rows.length;
+    SL.texts.push({ text: SL.chain > 1 ? `연쇄 ×${SL.chain} +${fmt(pts)}` : `+${fmt(pts)}`, y: LY + rows[0] * LS + LS / 2, t: performance.now() });
+    sfx('clear', rows.length + SL.chain - 1);
+    SL.phase = 'clearing'; SL.clearT = 0; sldStats();
+    return;
+  }
+  if (SL.rise) {
+    SL.rise = false; sldRise(true);
+    if (SL.bars.some(b => b.r < 0)) { sldOver(); return; }
+    sldGravity();   // bricks above the new row's gaps fall in (and may complete rows)
+    SL.phase = 'anim'; return;
+  }
+  SL.phase = 'idle';
+  if (!sldCanMove()) { SL.rise = true; SL.phase = 'check'; }
+  else sldSave();
+}
+function sldOver() {
+  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE);
+  const rec = SL.score > lBest;
+  if (rec) { lBest = SL.score; save('brickslide-best', lBest); }
+  $('lOvText').textContent = `벽돌이 맨 위를 넘었어요. 지운 줄 ${SL.lines}개.` + (rec ? ' 새 최고 기록입니다.' : '');
+  $('lOvScore').textContent = fmt(SL.score);
+  sldStats();
+  setTimeout(() => { if (SL.mode === 'over') $('lOverlay').hidden = false; }, 700);
+}
+function sldStats() { setText('lScore', SL.score); setText('lLines', SL.lines); setText('lBest', Math.max(lBest, SL.score)); }
+$('lRestart').addEventListener('click', sldNew);
+
+function updateSld(dt) {
+  const s = dt / 1000;
+  for (const b of SL.bars) {
+    const vy = 18 * s;
+    b.vy += Math.max(-vy, Math.min(vy, b.r - b.vy));
+    if (!ldrag || ldrag.b !== b) { const vx = 22 * s; b.vx += Math.max(-vx, Math.min(vx, b.c - b.vx)); }
+  }
+  if (SL.mode !== 'play') return;
+  if (SL.phase === 'anim') {
+    if (SL.bars.every(b => Math.abs(b.vy - b.r) < .001 && (ldrag && ldrag.b === b || Math.abs(b.vx - b.c) < .001))) SL.phase = 'check';
+  } else if (SL.phase === 'check') sldCheck();
+  else if (SL.phase === 'clearing') {
+    SL.clearT += dt;
+    if (SL.clearT >= 240) { SL.bars = SL.bars.filter(b => !b.clearing); sldGravity(); SL.phase = 'anim'; }
+  }
+}
+function sldLocal(e) {
+  const r = lcv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * LW / r.width, y: (e.clientY - r.top) * LH / r.height };
+}
+lcv.addEventListener('pointerdown', e => {
+  if (SL.mode !== 'play' || SL.phase !== 'idle' || ldrag) return;
+  const p = sldLocal(e), col = Math.floor((p.x - LX) / LS), row = Math.floor((p.y - LY) / LS);
+  const b = SL.bars.find(z => z.r === row && col >= z.c && col < z.c + z.len);
+  if (!b) return;
+  e.preventDefault();
+  try { lcv.setPointerCapture(e.pointerId); } catch (_) {}
+  const g = sldOcc();
+  let minC = b.c; while (minC > 0 && !g[b.r][minC - 1]) minC--;
+  let maxC = b.c; while (maxC + b.len < LC && !g[b.r][maxC + b.len]) maxC++;
+  ldrag = { b, id: e.pointerId, startX: p.x, origC: b.c, minC, maxC };
+  lcv.style.cursor = 'grabbing';
+});
+lcv.addEventListener('pointermove', e => {
+  if (!ldrag || e.pointerId !== ldrag.id) return;
+  const p = sldLocal(e);
+  ldrag.b.vx = Math.max(ldrag.minC, Math.min(ldrag.maxC, ldrag.origC + (p.x - ldrag.startX) / LS));
+});
+function sldRelease(e, cancel) {
+  if (!ldrag || (e && e.pointerId !== ldrag.id)) return;
+  const d = ldrag; ldrag = null; lcv.style.cursor = '';
+  const nc = cancel ? d.origC : Math.round(d.b.vx);
+  if (nc !== d.origC) {
+    d.b.c = nc; sfx('place');
+    SL.rise = true; SL.chain = 0;
+    sldGravity(); SL.phase = 'anim';
+  }
+}
+lcv.addEventListener('pointerup', e => sldRelease(e, false));
+lcv.addEventListener('pointercancel', e => sldRelease(e, true));
+lcv.addEventListener('contextmenu', e => e.preventDefault());
+
+function drawSld(now) {
+  const c = lctx;
+  c.clearRect(0, 0, LW, LH);
+  c.fillStyle = PWELL; rrect(c, LX - 8, LY - 8, LC * LS + 16, LR * LS + 16, 10);
+  c.fillStyle = PEMPTY;
+  for (let x = 0; x < LC; x++) for (let y = 0; y < LR; y++) rrect(c, LX + x * LS + 3, LY + y * LS + 3, LS - 6, LS - 6, 5);
+  // top row warning when bricks sit there
+  if (SL.bars.some(b => b.r === 0)) {
+    c.fillStyle = `rgba(239,102,112,${.18 + .12 * Math.sin(now / 160)})`;
+    c.fillRect(LX, LY, LC * LS, LS);
+  }
+  c.save(); c.beginPath(); c.rect(LX - 8, LY - 8, LC * LS + 16, LR * LS + 16); c.clip();
+  if (ldrag) {
+    c.fillStyle = 'rgba(255,255,255,.14)';
+    rrect(c, LX + ldrag.minC * LS + 2, LY + ldrag.b.r * LS + 2, (ldrag.maxC - ldrag.minC + ldrag.b.len) * LS - 4, LS - 4, 6);
+  }
+  const flash = Math.floor(now / 60) % 2 === 0;
+  for (const b of SL.bars) {
+    const x = LX + b.vx * LS, y = LY + b.vy * LS;
+    const color = b.clearing && flash ? '#ffffff' : LEN_COLOR[b.len];
+    bevelRect(c, x + 2, y + 2, b.len * LS - 4, LS - 4, color, ldrag && ldrag.b === b ? .9 : 1);
+    c.fillStyle = 'rgba(0,0,0,.18)';
+    for (let k = 1; k < b.len; k++) c.fillRect(x + k * LS - 1, y + 8, 2, LS - 16);
+  }
+  c.restore();
+  SL.texts = SL.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '22px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+  for (const t of SL.texts) {
+    const q = (now - t.t) / 900;
+    c.globalAlpha = 1 - q * q;
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, LW / 2, t.y - 30 * q);
+    c.fillStyle = tok('--ink', '#ffffff'); c.fillText(t.text, LW / 2, t.y - 30 * q);
+  }
+  c.globalAlpha = 1;
+  c.font = '600 12px "IBM Plex Sans KR", system-ui, sans-serif'; c.fillStyle = tok('--muted', '#9b93b5');
+  c.fillText(SL.phase === 'idle' && SL.mode === 'play' ? '벽돌을 좌우로 끌어 옮기세요' : '', LW / 2, LY + LR * LS + 22);
+}
+if (!sldResume()) sldNew();
+
+// menu art for the two new games
+function artPop() {
+  const a = $('artPop'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  const map = { r: POP_COLORS[0], y: POP_COLORS[1], b: POP_COLORS[2], g: POP_COLORS[3] };
+  ['.......', '..b....', '.bby.g.', 'rbyyggr', 'rryggbr', 'yrrbbbr', 'yybbgrr'].forEach((row, r) => [...row].forEach((ch, cc) => {
+    const px = 14 + cc * 16, py = 14 + r * 16;
+    if (ch === '.') { x.fillStyle = PEMPTY; x.fillRect(px + 1, py + 1, 14, 14); } else block(x, px, py, 16, map[ch]);
+  }));
+}
+function artSld() {
+  const a = $('artSld'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  for (let r = 0; r < 7; r++) for (let cc = 0; cc < 7; cc++) { x.fillStyle = PEMPTY; x.fillRect(14 + cc * 16 + 1, 14 + r * 16 + 1, 14, 14); }
+  [[6, 0, 3], [6, 4, 3], [5, 1, 2], [5, 3, 4], [4, 0, 1], [4, 2, 3], [3, 1, 2], [3, 5, 2], [1, 3, 2]].forEach(([r, cc, len]) =>
+    bevelRect(x, 14 + cc * 16 + 1, 14 + r * 16 + 1, len * 16 - 2, 14, LEN_COLOR[len]));
+}
+artPop(); artSld();
+
+// ================= settings: theme + volume =================
+let settings = { skin: 'dark', vol: 70, vibe: true };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
+const saveSettings = () => { try { localStorage.setItem('brick-settings', JSON.stringify(settings)); } catch (e) {} };
+
+function refreshTheme() {
+  WELL = tok('--well', '#0f0d17'); GRID = tok('--line', '#302b44'); EMPTY = tok('--cell', '#1d1a2a');
+  PWELL = tok('--pack-well', '#363162'); PEMPTY = tok('--pack-cell', '#4a437c');
+  BFIELD = tok('--brk-field', '#27315c');
+  artFP(); artBrk(); artStk(); artPop(); artSld();
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute('content', tok('--bg', '#15131e'));
+}
+function applySkin() {
+  document.documentElement.setAttribute('data-skin', settings.skin);
+  refreshTheme();
+}
+try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', refreshTheme); } catch (e) {}
+new MutationObserver(refreshTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+// sound: tiny synthesized effects, no files needed (works offline)
+let actx = null, master = null;
+function ensureAudio() {
+  try {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      actx = new AC(); master = actx.createGain(); master.connect(actx.destination); setVol();
+    }
+    if (actx.state === 'suspended') actx.resume();
+  } catch (e) {}
+}
+function setVol() { if (master) master.gain.value = (settings.vol / 100) * .6; }
+addEventListener('pointerdown', ensureAudio, true);
+addEventListener('keydown', ensureAudio, true);
+function tone(freq, dur, type, vol, when = 0, slideTo = 0) {
+  const t = actx.currentTime + when;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + .006);
+  g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+}
+const ARP = [523, 659, 784, 1046, 1318, 1568];
+// short vibrations on phones that support it (Android; iPhone Safari has no vibration API)
+const canVibe = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+const VIBE = { drop: 12, lock: 8, place: 8, item: 15, stack: 10, perfect: [12, 40, 12], lose: 70, stage: [20, 60, 20], over: [60, 50, 120] };
+function buzz(name, n) {
+  if (!settings.vibe || !canVibe) return;
+  const ua = navigator.userActivation; if (ua && !ua.hasBeenActive) return;   // browsers block it before the first tap
+  let p = name === 'clear' ? [18 + Math.min(n, 5) * 8] : VIBE[name];
+  if (!p) return;
+  try { navigator.vibrate(p); } catch (e) {}
+}
+function sfx(name, n = 1) {
+  buzz(name, n);
+  if (!settings.vol || !actx || actx.state !== 'running') return;
+  try {
+    switch (name) {
+      case 'move': tone(520, .03, 'square', .05); break;
+      case 'rotate': tone(760, .045, 'triangle', .12); break;
+      case 'hold': tone(440, .07, 'triangle', .12, 0, 660); break;
+      case 'drop': tone(200, .12, 'sine', .3, 0, 70); break;
+      case 'lock': tone(180, .06, 'triangle', .15); break;
+      case 'place': tone(330, .07, 'triangle', .18, 0, 420); break;
+      case 'clear': for (let i = 0; i < Math.min(n + 1, 6); i++) tone(ARP[i], .12, 'square', .1, i * .055); break;
+      case 'over': tone(392, .18, 'triangle', .2); tone(294, .18, 'triangle', .2, .18); tone(196, .4, 'triangle', .22, .36); break;
+      case 'paddle': tone(300, .05, 'square', .12); break;
+      case 'brick': tone(620 + Math.random() * 80, .05, 'square', .09); break;
+      case 'wall': tone(140, .04, 'triangle', .12); break;
+      case 'item': tone(500, .18, 'sine', .2, 0, 1000); break;
+      case 'lose': tone(330, .3, 'sawtooth', .1, 0, 110); break;
+      case 'stage': ARP.slice(0, 4).forEach((f, i) => tone(f, .14, 'square', .1, i * .08)); break;
+      case 'stack': tone(220 * Math.pow(2, (n % 12) / 12), .08, 'triangle', .2); break;
+      case 'perfect': tone(880, .08, 'sine', .2); tone(1320, .16, 'sine', .2, .06); break;
+      case 'test': tone(660, .1, 'triangle', .25); tone(880, .12, 'triangle', .22, .09); break;
+    }
+  } catch (e) {}
+}
+
+// settings dialog
+const sheet = $('settings');
+let sheetOpener = null;
+function syncSettingsUI() {
+  for (const r of document.querySelectorAll('input[name="skin"]')) r.checked = r.value === settings.skin;
+  $('volRange').value = settings.vol; $('volVal').textContent = settings.vol;
+  for (const r of document.querySelectorAll('input[name="vibe"]')) { r.checked = (r.value === 'on') === (settings.vibe && canVibe); r.disabled = !canVibe; }
+  if (!canVibe) $('vibeNote').textContent = '이 기기나 브라우저는 진동을 지원하지 않아요.';
+}
+function openSettings(btn) {
+  if (current === 'fall' && S.mode === 'play') togglePause();
+  if (current === 'brk' && B.mode === 'play') brkPause();
+  if (current === 'stk') stkPause();
+  sheetOpener = btn || null;
+  syncSettingsUI(); sheet.hidden = false;
+  const on = document.querySelector('input[name="skin"]:checked'); if (on) on.focus();
+}
+function closeSettings() { sheet.hidden = true; if (sheetOpener) sheetOpener.focus(); }
+document.querySelectorAll('[data-settings]').forEach(b => b.addEventListener('click', () => openSettings(b)));
+$('closeSettings').addEventListener('click', closeSettings);
+sheet.addEventListener('pointerdown', e => { if (e.target === sheet) closeSettings(); });
+for (const r of document.querySelectorAll('input[name="skin"]')) r.addEventListener('change', () => {
+  if (!r.checked) return; settings.skin = r.value; saveSettings(); applySkin();
+});
+for (const r of document.querySelectorAll('input[name="vibe"]')) r.addEventListener('change', () => {
+  if (!r.checked) return; settings.vibe = r.value === 'on'; saveSettings();
+  if (settings.vibe) buzz('perfect');
+});
+$('volRange').addEventListener('input', e => {
+  settings.vol = +e.target.value; $('volVal').textContent = settings.vol; setVol(); saveSettings();
+});
+$('volRange').addEventListener('change', () => { ensureAudio(); setTimeout(() => sfx('test'), 30); });
+// while the dialog is open, keys go to the dialog only (games never see them)
+addEventListener('keydown', e => {
+  if (sheet.hidden) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeSettings(); }
+  e.stopImmediatePropagation();
+}, true);
+applySkin();
+
+// update notice: the installed app (site/index.html) calls this when a new version has been downloaded
+window.brickUpdateReady = () => { $('updToast').hidden = false; };
+$('updBtn').addEventListener('click', () => location.reload());
+$('updLater').addEventListener('click', () => { $('updToast').hidden = true; });
+
+// ================= loop & boot =================
+let last = 0;
+function frame(t) {
+  const dt = Math.min(t - (last || t), 100); last = t;
+  if (current === 'fall') { updateFall(dt); drawFall(); }
+  else if (current === 'pack') drawPack(t);
+  else if (current === 'brk') { updateBrk(dt); drawBrk(t); }
+  else if (current === 'stk') { updateStk(dt); drawStk(t); }
+  else if (current === 'pop') { updatePop(dt); drawPop(t); }
+  else if (current === 'sld') { updateSld(dt); drawSld(t); }
+  requestAnimationFrame(frame);
+}
+function boot(data) {
+  S = fresh();
+  if (data && data.S && data.S.board) { Object.assign(S, data.S); if (S.mode === 'play') S.mode = 'pause'; }
+  if (data && data.P && data.P.grid) { P = Object.assign(packFresh(), data.P, { fx: [], texts: [] }); updatePackStats(); if (P.mode === 'over') packOver(); }
+  else if (!packResume()) packStart();
+  showOverlay();
+  show(location.hash.slice(1) || 'menu', true);
+  requestAnimationFrame(frame);
+}
+const hot = window.claude && window.claude.hot;
+if (hot && typeof hot.snapshot === 'function') { try { hot.snapshot(() => ({ S, P })); } catch (e) {} }
+if (hot && typeof hot.ready === 'function') hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+</script>
+</body>
+</html>

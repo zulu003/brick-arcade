@@ -1,0 +1,266 @@
+<title>Brick Arcade</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Sans+KR:wght@400;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/*@css*/
+</style>
+
+<main class="wrap">
+
+  <!-- ============ MENU ============ -->
+  <section class="screen" id="scrMenu">
+    <div class="menu-head">
+      <h1 class="logo" aria-label="Brick Arcade"><span>B</span><span>R</span><span>I</span><span>C</span><span>K</span><i class="gap"></i><span>A</span><span>R</span><span>C</span><span>A</span><span>D</span><span>E</span></h1>
+      <p class="tag">플레이할 게임을 고르세요</p>
+    </div>
+    <div class="cards">
+      <button class="card" type="button" id="goFall">
+        <div class="art"><canvas id="artFall" width="140" height="140"></canvas></div>
+        <h2>BRICKFALL</h2>
+        <p>위에서 떨어지는 블록을 돌리고 쌓아 가로줄을 지워요. 10줄마다 빨라져요.</p>
+        <div class="meta"><span>최고 <b id="mBestFall">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goPack">
+        <div class="art"><canvas id="artPack" width="140" height="140"></canvas></div>
+        <h2>BRICKPACK</h2>
+        <p>조각 3개를 8×8 판에 끌어다 놓아 가로·세로 줄을 지워요. 시간 제한은 없어요.</p>
+        <div class="meta"><span>최고 <b id="mBestPack">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goBrk">
+        <div class="art"><canvas id="artBrk" width="140" height="140"></canvas></div>
+        <h2>BRICKBREAK</h2>
+        <p>내려오는 벽돌 벽을 공으로 깨요. 끝없이 이어지고 점점 빨라져요. 아이템도 있어요.</p>
+        <div class="meta"><span>최고 <b id="mBestBrk">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goStk">
+        <div class="art"><canvas id="artStk" width="140" height="140"></canvas></div>
+        <h2>BRICKSTACK</h2>
+        <p>움직이는 벽돌을 탭해서 쌓아요. 삐져나온 부분은 잘려 나가요. 한 판이 짧아요.</p>
+        <div class="meta"><span>최고 <b id="mBestStk">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goPop">
+        <div class="art"><canvas id="artPop" width="140" height="140"></canvas></div>
+        <h2>BRICKPOP</h2>
+        <p>같은 색 덩어리를 눌러 터뜨려요. 아래에서 새 줄이 끝없이 올라와요. 크게 터뜨릴수록 점수가 커요.</p>
+        <div class="meta"><span>최고 <b id="mBestPop">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goSld">
+        <div class="art"><canvas id="artSld" width="140" height="140"></canvas></div>
+        <h2>BRICKSLIDE</h2>
+        <p>가로 벽돌을 좌우로 밀어 떨어뜨리고 줄을 채워요. 한 번 밀 때마다 아래에서 새 줄이 올라와요.</p>
+        <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+    </div>
+    <div class="menu-tools"><button class="gear" type="button" data-settings>⚙ 설정</button></div>
+    <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
+  </section>
+
+  <!-- ============ BRICKFALL ============ -->
+  <section class="screen" id="scrFall" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKFALL</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="game">
+      <div class="hold">
+        <div class="panel"><span class="label">홀드</span><canvas id="holdCv" class="mini" width="96" height="64"></canvas></div>
+        <div class="panel keys-panel">
+          <span class="label">조작</span>
+          <dl class="keys">
+            <dt>← →</dt><dd>이동</dd>
+            <dt>↓</dt><dd>소프트 드롭</dd>
+            <dt>↑ X</dt><dd>회전 ↻</dd>
+            <dt>Z</dt><dd>회전 ↺</dd>
+            <dt>Space</dt><dd>하드 드롭</dd>
+            <dt>C</dt><dd>홀드</dd>
+            <dt>P Esc</dt><dd>일시정지</dd>
+          </dl>
+        </div>
+      </div>
+      <div class="well">
+        <canvas id="board" width="320" height="640" aria-label="Brickfall 게임 보드"></canvas>
+        <div class="overlay" id="overlay">
+          <h2 id="ovTitle">BRICKFALL</h2>
+          <p id="ovText"></p>
+          <div class="big" id="ovScore" hidden></div>
+          <button class="btn" id="ovBtn" type="button">시작</button>
+        </div>
+      </div>
+      <div class="side">
+        <div class="panel"><span class="label">다음</span><canvas id="nextCv" class="mini" width="96" height="192"></canvas></div>
+        <div class="panel">
+          <div class="stat score"><span class="label">점수</span><b id="sScore">0</b></div>
+          <div class="stat"><span class="label">줄</span><b id="sLines">0</b></div>
+          <div class="stat"><span class="label">레벨</span><b id="sLevel">1</b></div>
+          <div class="stat"><span class="label">최고</span><b id="sBest">0</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="pad" id="pad">
+      <button type="button" data-act="hold">홀드</button>
+      <button type="button" data-act="ccw" aria-label="반시계 회전">↺</button>
+      <button type="button" data-act="cw" aria-label="시계 회전">↻</button>
+      <button type="button" data-act="pause" aria-label="일시정지">Ⅱ</button>
+      <button type="button" data-act="left" aria-label="왼쪽">←</button>
+      <button type="button" data-act="down" aria-label="아래">↓</button>
+      <button type="button" data-act="right" aria-label="오른쪽">→</button>
+      <button type="button" data-act="drop" class="go">드롭</button>
+    </div>
+  </section>
+
+  <!-- ============ BRICKPACK ============ -->
+  <section class="screen" id="scrPack" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="pstats">
+      <div class="stat score"><span class="label">점수</span><b id="pScore">0</b></div>
+      <div class="combo" id="pCombo" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="pBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="packCv" width="360" height="510" aria-label="Brickpack 게임 보드"></canvas>
+      <div class="overlay" id="pOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="pOvText">더 이상 놓을 자리가 없어요.</p>
+        <div class="big" id="pOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="pRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">아래 조각을 끌어서 판 위에 놓으세요. 놓을 수 없는 조각은 흐리게 보여요.</p>
+  </section>
+
+  <!-- ============ BRICKBREAK ============ -->
+  <section class="screen" id="scrBrk" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKBREAK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="bScore">0</b></div>
+      <div class="stat"><span class="label">레벨</span><b id="bStage">1</b></div>
+      <div class="stat"><span class="label">목숨</span><b id="bLives" class="lives">♥♥♥</b></div>
+      <div class="stat"><span class="label">최고</span><b id="bBest">0</b></div>
+    </div>
+    <div class="field">
+      <canvas id="brkCv" width="360" height="540" aria-label="Brickbreak 게임 화면"></canvas>
+      <div class="overlay" id="bOverlay">
+        <h2 id="bOvTitle">BRICKBREAK</h2>
+        <p id="bOvText"></p>
+        <div class="big" id="bOvScore" hidden></div>
+        <button class="btn" id="bOvBtn" type="button">시작</button>
+      </div>
+    </div>
+    <p class="hint">← → 키, 마우스, 또는 화면을 끌어서 패들을 움직여요. 탭 또는 Space로 공을 발사해요. P·Esc 일시정지.</p>
+  </section>
+
+  <!-- ============ BRICKSTACK ============ -->
+  <section class="screen" id="scrStk" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSTACK</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">높이</span><b id="tScore">0</b></div>
+      <div class="stat"><span class="label">최고</span><b id="tBest">0</b></div>
+    </div>
+    <div class="field">
+      <canvas id="stkCv" width="360" height="540" aria-label="Brickstack 게임 화면"></canvas>
+      <div class="overlay" id="tOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="tOvText"></p>
+        <div class="big" id="tOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="tRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">화면을 탭하거나 Space를 눌러 벽돌을 떨어뜨려요. 딱 맞추면 퍼펙트!</p>
+  </section>
+
+  <!-- ============ BRICKPOP ============ -->
+  <section class="screen" id="scrPop" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPOP</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="oScore">0</b></div>
+      <div class="stat"><span class="label">레벨</span><b id="oLevel">1</b></div>
+      <div class="stat"><span class="label">다음 줄까지</span><b id="oNext">4번</b></div>
+      <div class="preview" id="oPreview" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="oBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="popCv" width="360" height="440" aria-label="Brickpop 게임 보드"></canvas>
+      <div class="overlay" id="oOverlay" hidden>
+        <h2 id="oOvTitle">게임 오버</h2>
+        <p id="oOvText"></p>
+        <div class="big" id="oOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="oRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <div class="tools"><button class="back" type="button" id="oNew">새 판</button></div>
+    <p class="hint">같은 색이 2개 이상 붙은 덩어리를 누르면 터져요. n개면 (n−2)²점. 몇 번 터뜨릴 때마다 아래에서 새 줄이 올라오고(판 아래 줄이 다음 줄), 벽돌이 맨 위를 넘으면 끝나요. 판을 비우면 보너스 1,000점.</p>
+  </section>
+
+  <!-- ============ BRICKSLIDE ============ -->
+  <section class="screen" id="scrSld" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSLIDE</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="lScore">0</b></div>
+      <div class="stat"><span class="label">지운 줄</span><b id="lLines">0</b></div>
+      <div class="stat"><span class="label">최고</span><b id="lBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="sldCv" width="360" height="480" aria-label="Brickslide 게임 보드"></canvas>
+      <div class="overlay" id="lOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="lOvText"></p>
+        <div class="big" id="lOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="lRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">벽돌을 좌우로 끌어서 옮기면 떨어져서 줄을 채워요. 꽉 찬 줄은 지워지고, 한 번 옮길 때마다 아래에서 새 줄이 올라와요.</p>
+  </section>
+
+  <!-- ============ UPDATE NOTICE (installed app only) ============ -->
+  <div class="toast" id="updToast" hidden role="status">
+    <span>새 버전이 있어요</span>
+    <button class="btn" id="updBtn" type="button">새로고침</button>
+    <button class="toast-x" id="updLater" type="button" aria-label="나중에">✕</button>
+  </div>
+
+  <!-- ============ SETTINGS ============ -->
+  <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="sheet-card">
+      <h2 id="setTitle">설정</h2>
+      <fieldset class="seg">
+        <legend class="label">화면 테마</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="skin" value="dark" id="skinDark"><span>다크</span></label>
+          <label><input type="radio" name="skin" value="light" id="skinLight"><span>라이트</span></label>
+          <label><input type="radio" name="skin" value="system" id="skinSystem"><span>시스템</span></label>
+        </div>
+      </fieldset>
+      <div class="vol">
+        <label class="label" for="volRange">효과음 음량</label>
+        <div class="vol-row"><input type="range" id="volRange" min="0" max="100" step="5" value="70"><b id="volVal">70</b></div>
+        <p class="note">0으로 두면 소리가 꺼져요. 시스템은 기기 설정을 따라가요.</p>
+      </div>
+      <fieldset class="seg two" id="vibeSet">
+        <legend class="label">진동</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="vibe" value="on" id="vibeOn"><span>켜기</span></label>
+          <label><input type="radio" name="vibe" value="off" id="vibeOff"><span>끄기</span></label>
+        </div>
+        <p class="note" id="vibeNote">줄을 지우거나 게임이 끝날 때 짧게 진동해요.</p>
+      </fieldset>
+      <button class="btn" id="closeSettings" type="button">닫기</button>
+    </div>
+  </div>
+</main>
+
+<script>
+(() => {
+/*@js*/
+})();
+</script>
