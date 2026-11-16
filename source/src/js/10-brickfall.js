@@ -269,6 +269,49 @@ document.querySelectorAll('#pad button').forEach(b => {
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
 
+// touch gestures on the board (phones): drag sideways to move one column per cell, drag down to soft-drop,
+// flick down to drop, flick up to hold, tap to rotate. The first ~12px decide the direction, so a sideways
+// drag never drops by accident. The mouse keeps using the keyboard; the on-screen buttons still work.
+let swipe = null;
+const SWIPE_LOCK = 12, FLICK_SPEED = .9, TAP_MS = 260;
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' || current !== 'fall' || S.mode !== 'play' || swipe) return;
+  e.preventDefault();
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  const cell = cv.getBoundingClientRect().width / COLS;
+  swipe = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), cell, axis: null, cols: 0, rows: 0, lastY: e.clientY, lastT: performance.now(), vy: 0 };
+});
+cv.addEventListener('pointermove', e => {
+  const g = swipe; if (!g || e.pointerId !== g.id || S.mode !== 'play') return;
+  e.preventDefault();
+  const dx = e.clientX - g.x0, dy = e.clientY - g.y0, now = performance.now();
+  if (!g.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= SWIPE_LOCK) g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  if (g.axis === 'x') {
+    const want = Math.trunc(dx / (g.cell * .85));
+    while (g.cols < want) { move(1); g.cols++; }
+    while (g.cols > want) { move(-1); g.cols--; }
+  } else if (g.axis === 'y' && dy > 0) {
+    const want = Math.trunc(dy / g.cell);
+    while (g.rows < want && S.cur) { softDrop(); g.rows++; }
+  }
+  // speed over the last moment, for telling a flick from a slow drag
+  const dt = Math.max(1, now - g.lastT);
+  g.vy = .6 * g.vy + .4 * ((e.clientY - g.lastY) / dt);
+  g.lastY = e.clientY; g.lastT = now;
+});
+function endSwipe(e, cancel) {
+  const g = swipe; if (!g || e.pointerId !== g.id) return;
+  swipe = null;
+  if (cancel || S.mode !== 'play') return;
+  const dy = e.clientY - g.y0, dist = Math.hypot(e.clientX - g.x0, dy), dur = performance.now() - g.t0;
+  if (!g.axis && dist < SWIPE_LOCK && dur < TAP_MS) { rotate(1); return; }
+  if (g.axis !== 'y') return;
+  if (dy > g.cell * 1.5 && g.vy > FLICK_SPEED) hardDrop();
+  else if (dy < -g.cell * 1.5 && g.vy < -FLICK_SPEED * .7) holdPiece();
+}
+cv.addEventListener('pointerup', e => endSwipe(e, false));
+cv.addEventListener('pointercancel', e => endSwipe(e, true));
+
 function updateFall(dt) {
   if (S.mode !== 'play') return;
   if (S.clearing) { S.clearT += dt; if (S.clearT >= CLEAR_MS) finishClear(); return; }

@@ -80,6 +80,33 @@ module.exports = [
     t("fallMode('endless')"); eq(t('S.gm'), 'endless', 'switched'); eq(t('S.score'), e.score, 'endless kept');
     t("fallMode('stage')"); eq(t('S.score'), s.score, 'stage kept');` },
 
+  { name: 'fall: touch swipes move, rotate, drop and hold', code: `
+    t("show('fall'); start(); S.board = Array.from({length:20}, () => Array(10).fill(null)); S.cur = null; S.hold = null; S.canHold = true; spawn('T')");
+    const cv = $('board'), r = cv.getBoundingClientRect(), cell = r.width / 10;
+    const at = (x, y) => ({ clientX: r.left + x, clientY: r.top + y, pointerType: 'touch', pointerId: 7, bubbles: true });
+    const gesture = async (pts, gap) => {
+      cv.dispatchEvent(new PointerEvent('pointerdown', at(...pts[0])));
+      for (const p of pts.slice(1)) { await sleep(gap); cv.dispatchEvent(new PointerEvent('pointermove', at(...p))); }
+      cv.dispatchEvent(new PointerEvent('pointerup', at(...pts[pts.length - 1])));
+    };
+    const x0 = t('S.cur.x'), y0 = t('S.cur.y'), cx = r.width / 2, cy = r.height / 3;
+    // drag right three cells, slowly: three columns, no drop
+    await gesture([[cx, cy], [cx + cell, cy + 2], [cx + 2 * cell, cy + 3], [cx + 3 * cell, cy + 3]], 40);
+    eq([t('S.cur.x') - x0, t('S.cur.y')], [3, y0], 'moved 3 right, same row');
+    // tap: rotates
+    const m0 = JSON.stringify(t('S.cur.m')); await gesture([[cx, cy], [cx + 2, cy + 1]], 20);
+    assert(JSON.stringify(t('S.cur.m')) !== m0, 'tap rotates');
+    // slow drag down two cells: soft drop, piece still falling
+    const ySlow = t('S.cur.y'); await gesture([[cx, cy], [cx, cy + cell * .7], [cx, cy + cell * 1.4], [cx, cy + cell * 2.1]], 120);
+    eq([t('S.cur.y') - ySlow, t('S.cur.type')], [2, 'T'], 'soft-dropped 2 rows');
+    // flick up: hold
+    await gesture([[cx, cy + 3 * cell], [cx, cy + 1.5 * cell], [cx, cy]], 16);
+    eq(t('S.hold'), 'T', 'held');
+    // flick down: hard drop locks the piece
+    const filled = t('S.board.flat().filter(Boolean).length');
+    await gesture([[cx, cy], [cx, cy + 1.5 * cell], [cx, cy + 3 * cell], [cx, cy + 4.5 * cell]], 16);
+    assert(t('S.board.flat().filter(Boolean).length') > filled, 'dropped and locked');` },
+
   // ---------------- BRICKPACK ----------------
   { name: 'pack: random play until no move, then records the game', code: `
     t("show('pack'); packStart(false, 'endless')");

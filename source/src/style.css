@@ -84,7 +84,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .keys dt{font-family:var(--mono);color:var(--ink);font-size:11px}
 .keys dd{margin:0}
 
-#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;background:var(--well);border:2px solid var(--line);border-radius:4px}
+#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--well);border:2px solid var(--line);border-radius:4px}
 .overlay{position:absolute;inset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--veil);border-radius:6px;padding:16px}
 .overlay h2{margin:0;font-family:var(--display);font-weight:400;font-size:26px;color:var(--ink)}
 .overlay p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
@@ -198,7 +198,8 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .toast-x{background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px 8px;border-radius:6px}
 .toast-x:focus-visible{outline:2px solid var(--ink)}
 
-@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} }
+.touch-hint{display:none;margin-top:-4px}
+@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} .touch-hint{display:block} }
 @media (max-width:640px){
   .game{grid-template-columns:72px auto 72px;gap:8px}
   .panel{padding:8px}

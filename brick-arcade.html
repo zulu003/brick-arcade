@@ -98,7 +98,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .keys dt{font-family:var(--mono);color:var(--ink);font-size:11px}
 .keys dd{margin:0}
 
-#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;background:var(--well);border:2px solid var(--line);border-radius:4px}
+#board{display:block;width:min(calc(72vh / 2),320px);aspect-ratio:1/2;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--well);border:2px solid var(--line);border-radius:4px}
 .overlay{position:absolute;inset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--veil);border-radius:6px;padding:16px}
 .overlay h2{margin:0;font-family:var(--display);font-weight:400;font-size:26px;color:var(--ink)}
 .overlay p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
@@ -212,7 +212,8 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .toast-x{background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px 8px;border-radius:6px}
 .toast-x:focus-visible{outline:2px solid var(--ink)}
 
-@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} }
+.touch-hint{display:none;margin-top:-4px}
+@media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} .touch-hint{display:block} }
 @media (max-width:640px){
   .game{grid-template-columns:72px auto 72px;gap:8px}
   .panel{padding:8px}
@@ -324,6 +325,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
       <button type="button" data-act="right" aria-label="오른쪽">→</button>
       <button type="button" data-act="drop" class="go">드롭</button>
     </div>
+    <p class="hint touch-hint">판을 좌우로 밀면 이동, 탭하면 회전. 아래로 끌면 천천히, 빠르게 쓸어내리면 바로 떨어지고, 위로 쓸면 홀드예요.</p>
   </section>
 
   <!-- ============ BRICKPACK ============ -->
@@ -946,6 +948,49 @@ document.querySelectorAll('#pad button').forEach(b => {
   b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
+
+// touch gestures on the board (phones): drag sideways to move one column per cell, drag down to soft-drop,
+// flick down to drop, flick up to hold, tap to rotate. The first ~12px decide the direction, so a sideways
+// drag never drops by accident. The mouse keeps using the keyboard; the on-screen buttons still work.
+let swipe = null;
+const SWIPE_LOCK = 12, FLICK_SPEED = .9, TAP_MS = 260;
+cv.addEventListener('pointerdown', e => {
+  if (e.pointerType === 'mouse' || current !== 'fall' || S.mode !== 'play' || swipe) return;
+  e.preventDefault();
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  const cell = cv.getBoundingClientRect().width / COLS;
+  swipe = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(), cell, axis: null, cols: 0, rows: 0, lastY: e.clientY, lastT: performance.now(), vy: 0 };
+});
+cv.addEventListener('pointermove', e => {
+  const g = swipe; if (!g || e.pointerId !== g.id || S.mode !== 'play') return;
+  e.preventDefault();
+  const dx = e.clientX - g.x0, dy = e.clientY - g.y0, now = performance.now();
+  if (!g.axis && Math.max(Math.abs(dx), Math.abs(dy)) >= SWIPE_LOCK) g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+  if (g.axis === 'x') {
+    const want = Math.trunc(dx / (g.cell * .85));
+    while (g.cols < want) { move(1); g.cols++; }
+    while (g.cols > want) { move(-1); g.cols--; }
+  } else if (g.axis === 'y' && dy > 0) {
+    const want = Math.trunc(dy / g.cell);
+    while (g.rows < want && S.cur) { softDrop(); g.rows++; }
+  }
+  // speed over the last moment, for telling a flick from a slow drag
+  const dt = Math.max(1, now - g.lastT);
+  g.vy = .6 * g.vy + .4 * ((e.clientY - g.lastY) / dt);
+  g.lastY = e.clientY; g.lastT = now;
+});
+function endSwipe(e, cancel) {
+  const g = swipe; if (!g || e.pointerId !== g.id) return;
+  swipe = null;
+  if (cancel || S.mode !== 'play') return;
+  const dy = e.clientY - g.y0, dist = Math.hypot(e.clientX - g.x0, dy), dur = performance.now() - g.t0;
+  if (!g.axis && dist < SWIPE_LOCK && dur < TAP_MS) { rotate(1); return; }
+  if (g.axis !== 'y') return;
+  if (dy > g.cell * 1.5 && g.vy > FLICK_SPEED) hardDrop();
+  else if (dy < -g.cell * 1.5 && g.vy < -FLICK_SPEED * .7) holdPiece();
+}
+cv.addEventListener('pointerup', e => endSwipe(e, false));
+cv.addEventListener('pointercancel', e => endSwipe(e, true));
 
 function updateFall(dt) {
   if (S.mode !== 'play') return;
@@ -2494,7 +2539,7 @@ $('xImport').addEventListener('click', () => {
 const INTRO = {
   fall: ['떨어지는 블록을 옮기고 돌려서 가로줄을 꽉 채우면 줄이 지워져요.',
     '키보드: ← → 이동, ↑ 회전, ↓ 천천히 내리기, Space 바로 떨어뜨리기, C 보관, P 일시정지.',
-    '휴대폰: 화면 아래 버튼으로 조작해요.', '10줄마다 레벨이 오르고 빨라져요. 블록이 맨 위에 닿으면 끝나요.'],
+    '휴대폰: 판을 좌우로 밀면 이동, 탭하면 회전, 아래로 빠르게 쓸면 바로 떨어지고 위로 쓸면 보관해요. 아래 버튼도 그대로 쓸 수 있어요.', '10줄마다 레벨이 오르고 빨라져요. 블록이 맨 위에 닿으면 끝나요.'],
   pack: ['아래 조각 3개를 끌어서 8×8 판에 놓아요. 조각은 돌릴 수 없어요.',
     '가로줄이나 세로줄을 꽉 채우면 지워지고, 여러 줄을 한 번에 지우거나 연달아 지우면 점수가 커져요.',
     '어떤 조각도 놓을 수 없으면 끝나요. 시간 제한은 없어요.', '오늘의 판은 하루 동안 모두에게 같은 조각이 나와요.'],

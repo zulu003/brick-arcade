@@ -33,3 +33,7 @@ Needs Node 22 or newer and Chrome or Edge (set `CHROME` to its path if it is som
 It builds the page, opens it in headless Chrome with a hook into the game code, and plays each game:
 random play with board checks, stage clears, saves and resume, daily boards, achievements, record
 export/import, and a text-contrast check of every screen in both themes. Run it before every release.
+
+GitHub runs the same tests on every push (`.github/workflows/pages.yml`) and publishes the site only
+when they all pass and the committed pages match the source. A red run on the repository's Actions tab
+means the live site was left on the previous version.

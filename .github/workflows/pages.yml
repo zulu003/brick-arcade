@@ -1,0 +1,49 @@
+# Every push to main: run the game tests, and publish the site only if they all pass.
+# A failing test leaves the live site on the previous version and marks the run red on GitHub.
+name: Test and publish
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run game tests (headless Chrome)
+        run: node source/test.js
+      - name: Check the committed pages match the source
+        run: |
+          git diff --exit-code -- index.html brick-arcade.html source/artifact.html \
+            || (echo "::error::The built pages are out of date. Run 'node source/build.js' and commit." && exit 1)
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

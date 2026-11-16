@@ -34,7 +34,9 @@ async function main() {
   if (!chrome) throw new Error('Chrome or Edge not found; set CHROME to its path');
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'brick-test-'));
   const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--mute-audio',
-    '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1000,900', 'about:blank'], { stdio: 'ignore' });
+    '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1000,900',
+    // GitHub's Linux runners block Chrome's sandbox; the page under test is our own
+    ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: 'ignore' });
   let cdp;
   try {
     let port = null;
