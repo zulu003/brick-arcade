@@ -119,7 +119,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .pad button:active{filter:brightness(1.35)}
 
 /* brickpack */
-body.pack{--bg:var(--pack-bg);--line:var(--pack-line);--muted:var(--pack-muted);--veil:var(--pack-veil)}
+body.pack,body.pop,body.sld{--bg:var(--pack-bg);--line:var(--pack-line);--muted:var(--pack-muted);--veil:var(--pack-veil)}
 .pstats{display:flex;gap:28px;justify-content:center;align-items:flex-end}
 .pstats .stat{align-items:center}
 .combo{font-family:var(--display);font-size:15px;color:var(--accent);min-width:7ch;text-align:center}
@@ -137,6 +137,12 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 #brkCv,#stkCv{display:block;width:min(100%,400px,calc((100vh - 190px) * 360 / 540));aspect-ratio:360/540;height:auto;border-radius:8px;touch-action:none;user-select:none;-webkit-user-select:none}
 #brkCv{cursor:none}
 #stkCv{cursor:pointer}
+
+/* brickpop & brickslide */
+#popCv{display:block;width:min(100%,420px,calc((100vh - 220px) * 360 / 424));aspect-ratio:360/424;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
+#sldCv{display:block;width:min(100%,400px,calc((100vh - 200px) * 360 / 480));aspect-ratio:360/480;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.preview{font-family:var(--mono);font-size:14px;color:var(--accent);min-width:9ch;text-align:center}
+.tools{display:flex;gap:8px;justify-content:center}
 
 /* settings */
 .logo{text-shadow:var(--logo-shadow)}
@@ -209,9 +215,21 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         <p>움직이는 벽돌을 탭해서 쌓아요. 삐져나온 부분은 잘려 나가요. 한 판이 짧아요.</p>
         <div class="meta"><span>최고 <b id="mBestStk">0</b></span><span class="play">플레이 →</span></div>
       </button>
+      <button class="card" type="button" id="goPop">
+        <div class="art"><canvas id="artPop" width="140" height="140"></canvas></div>
+        <h2>BRICKPOP</h2>
+        <p>같은 색 벽돌이 2개 이상 붙어 있으면 눌러서 터뜨려요. 한 번에 크게 터뜨릴수록 점수가 커요.</p>
+        <div class="meta"><span>최고 <b id="mBestPop">0</b></span><span class="play">플레이 →</span></div>
+      </button>
+      <button class="card" type="button" id="goSld">
+        <div class="art"><canvas id="artSld" width="140" height="140"></canvas></div>
+        <h2>BRICKSLIDE</h2>
+        <p>가로 벽돌을 좌우로 밀어 떨어뜨리고 줄을 채워요. 한 번 밀 때마다 아래에서 새 줄이 올라와요.</p>
+        <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
+      </button>
     </div>
     <div class="menu-tools"><button class="gear" type="button" data-settings>⚙ 설정</button></div>
-    <p class="menu-foot">키보드: 1–4를 눌러 바로 시작</p>
+    <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
   </section>
 
   <!-- ============ BRICKFALL ============ -->
@@ -330,6 +348,54 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
     <p class="hint">화면을 탭하거나 Space를 눌러 벽돌을 떨어뜨려요. 딱 맞추면 퍼펙트!</p>
   </section>
 
+  <!-- ============ BRICKPOP ============ -->
+  <section class="screen" id="scrPop" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKPOP</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="oScore">0</b></div>
+      <div class="stat"><span class="label">남은 벽돌</span><b id="oLeft">0</b></div>
+      <div class="preview" id="oPreview" aria-live="polite"></div>
+      <div class="stat"><span class="label">최고</span><b id="oBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="popCv" width="360" height="424" aria-label="Brickpop 게임 보드"></canvas>
+      <div class="overlay" id="oOverlay" hidden>
+        <h2 id="oOvTitle">끝!</h2>
+        <p id="oOvText"></p>
+        <div class="big" id="oOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="oRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <div class="tools"><button class="back" type="button" id="oNew">새 판</button></div>
+    <p class="hint">같은 색이 2개 이상 붙은 덩어리를 누르면 터져요. n개를 터뜨리면 (n−2)²점, 모두 터뜨리면 보너스 1,000점.</p>
+  </section>
+
+  <!-- ============ BRICKSLIDE ============ -->
+  <section class="screen" id="scrSld" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSLIDE</span><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="lScore">0</b></div>
+      <div class="stat"><span class="label">지운 줄</span><b id="lLines">0</b></div>
+      <div class="stat"><span class="label">최고</span><b id="lBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="sldCv" width="360" height="480" aria-label="Brickslide 게임 보드"></canvas>
+      <div class="overlay" id="lOverlay" hidden>
+        <h2>게임 오버</h2>
+        <p id="lOvText"></p>
+        <div class="big" id="lOvScore">0</div>
+        <div class="row">
+          <button class="btn" id="lRestart" type="button">다시 시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">벽돌을 좌우로 끌어서 옮기면 떨어져서 줄을 채워요. 꽉 찬 줄은 지워지고, 한 번 옮길 때마다 아래에서 새 줄이 올라와요.</p>
+  </section>
+
   <!-- ============ SETTINGS ============ -->
   <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="sheet-card">
@@ -385,7 +451,7 @@ function rrect(c, x, y, w, h, r) {
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
@@ -396,6 +462,8 @@ function show(name, fromHash) {
   document.body.classList.toggle('pack', name === 'pack');
   document.body.classList.toggle('brk', name === 'brk');
   document.body.classList.toggle('stk', name === 'stk');
+  document.body.classList.toggle('pop', name === 'pop');
+  document.body.classList.toggle('sld', name === 'sld');
   if (name === 'menu') refreshMenu();
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);
@@ -406,12 +474,16 @@ $('goFall').addEventListener('click', () => show('fall'));
 $('goPack').addEventListener('click', () => show('pack'));
 $('goBrk').addEventListener('click', () => show('brk'));
 $('goStk').addEventListener('click', () => show('stk'));
+$('goPop').addEventListener('click', () => show('pop'));
+$('goSld').addEventListener('click', () => show('sld'));
 
 function refreshMenu() {
   $('mBestFall').textContent = fmt(best);
   $('mBestPack').textContent = fmt(pBest);
   $('mBestBrk').textContent = fmt(bBest);
   $('mBestStk').textContent = fmt(tBest);
+  $('mBestPop').textContent = fmt(oBest);
+  $('mBestSld').textContent = fmt(lBest);
 }
 function drawArt(id, rows, cell) {
   const c = $(id), x = c.getContext('2d');
@@ -619,6 +691,7 @@ addEventListener('keydown', e => {
   if (current === 'menu') {
     if (e.key === '1') show('fall'); else if (e.key === '2') show('pack');
     else if (e.key === '3') show('brk'); else if (e.key === '4') show('stk');
+    else if (e.key === '5') show('pop'); else if (e.key === '6') show('sld');
     return;
   }
   if (current !== 'fall') return;
@@ -1318,6 +1391,348 @@ function artStk() {
 }
 artBrk(); artStk();
 
+// ================= BRICKPOP =================
+const OC = 10, OR = 12, OS = 32, OX = 20, OY = 20, OW = 360, OH = 424;
+const POP_COLORS = ['#ef6670', '#f4cc4a', '#5c86f2', '#6ccf86'];
+const ocv = $('popCv'), octx = ocv.getContext('2d');
+setupHiDPI(ocv, OW, OH, octx);
+let oBest = load('brickpop-best');
+let PO = null, oHover = null, oid = 0;
+
+// cols[c] holds cells bottom-to-top; each cell keeps its own drawn position (vx, vy) that eases to its slot
+const oSlotX = c => OX + c * OS, oSlotY = i => OY + (OR - 1 - i) * OS;
+function popNew() {
+  PO = { cols: [], score: 0, mode: 'play', fx: [], texts: [] };
+  for (let c = 0; c < OC; c++) {
+    const col = [];
+    for (let i = 0; i < OR; i++)
+      col.push({ id: oid++, color: POP_COLORS[Math.floor(Math.random() * POP_COLORS.length)], vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 });
+    PO.cols.push(col);
+  }
+  oHover = null; $('oOverlay').hidden = true; popStats();
+}
+function popGroup(c, i) {
+  const col = PO.cols[c]; if (!col || !col[i]) return [];
+  const color = col[i].color, seen = new Set([c + ',' + i]), out = [[c, i]], stack = [[c, i]];
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
+      const k = nx + ',' + ny;
+      if (seen.has(k)) continue;
+      const cell = PO.cols[nx] && PO.cols[nx][ny];
+      if (cell && cell.color === color) { seen.add(k); out.push([nx, ny]); stack.push([nx, ny]); }
+    }
+  }
+  return out;
+}
+const popLeft = () => PO.cols.reduce((a, col) => a + col.length, 0);
+function popHasMoves() {
+  for (let c = 0; c < PO.cols.length; c++) for (let i = 0; i < PO.cols[c].length; i++) {
+    const color = PO.cols[c][i].color;
+    if (PO.cols[c][i + 1] && PO.cols[c][i + 1].color === color) return true;
+    if (PO.cols[c + 1] && PO.cols[c + 1][i] && PO.cols[c + 1][i].color === color) return true;
+  }
+  return false;
+}
+const popPts = n => (n - 2) * (n - 2);
+function popAt(c, i) {
+  if (PO.mode !== 'play') return;
+  const g = popGroup(c, i);
+  if (g.length < 2) return;
+  const now = performance.now(), dead = new Set(g.map(([x, y]) => PO.cols[x][y].id));
+  let sx = 0, sy = 0;
+  for (const [x, y] of g) { const cell = PO.cols[x][y]; PO.fx.push({ x: cell.vx, y: cell.vy, color: cell.color, t: now }); sx += cell.vx; sy += cell.vy; }
+  const pts = popPts(g.length);
+  PO.score += pts;
+  PO.texts.push({ text: pts ? `+${fmt(pts)}` : '+0', x: sx / g.length + OS / 2, y: sy / g.length + OS / 2, t: now });
+  PO.cols = PO.cols.map(col => col.filter(cell => !dead.has(cell.id))).filter(col => col.length);
+  sfx(g.length >= 6 ? 'clear' : 'place', Math.min(5, Math.floor(g.length / 4)));
+  oHover = null;
+  if (!popLeft()) {
+    PO.score += 1000;
+    PO.texts.push({ text: '모두 터뜨림 +1,000', x: OW / 2, y: OY + OR * OS / 2, t: now + 200 });
+    popOver(true);
+  } else if (!popHasMoves()) popOver(false);
+  popStats();
+}
+function popOver(cleared) {
+  PO.mode = 'over'; sfx('over');
+  const rec = PO.score > oBest;
+  if (rec) { oBest = PO.score; save('brickpop-best', oBest); }
+  $('oOvTitle').textContent = cleared ? '완벽해요!' : '끝!';
+  $('oOvText').textContent = (cleared ? '벽돌을 모두 터뜨렸어요.' : `더 터뜨릴 덩어리가 없어요. 남은 벽돌 ${popLeft()}개.`) + (rec ? ' 새 최고 기록입니다.' : '');
+  $('oOvScore').textContent = fmt(PO.score);
+  setTimeout(() => { if (PO.mode === 'over') $('oOverlay').hidden = false; }, 700);
+}
+function popStats() {
+  setText('oScore', PO.score); setText('oLeft', popLeft()); setText('oBest', Math.max(oBest, PO.score));
+  const n = oHover ? oHover.length : 0;
+  setText('oPreview', n >= 2 ? `${n}개 · +${fmt(popPts(n))}` : '');
+}
+function popCell(e) {
+  const r = ocv.getBoundingClientRect();
+  const x = (e.clientX - r.left) * OW / r.width, y = (e.clientY - r.top) * OH / r.height;
+  const c = Math.floor((x - OX) / OS), i = OR - 1 - Math.floor((y - OY) / OS);
+  if (c < 0 || i < 0 || !PO.cols[c] || !PO.cols[c][i]) return null;
+  return [c, i];
+}
+ocv.addEventListener('pointermove', e => {
+  if (e.pointerType !== 'mouse' || PO.mode !== 'play') return;
+  const at = popCell(e); const g = at ? popGroup(at[0], at[1]) : [];
+  oHover = g.length >= 2 ? g : null; popStats();
+});
+ocv.addEventListener('pointerleave', () => { oHover = null; popStats(); });
+ocv.addEventListener('pointerdown', e => {
+  e.preventDefault();
+  const at = popCell(e); if (at) popAt(at[0], at[1]);
+  if (e.pointerType === 'mouse') { const a2 = popCell(e); const g = a2 ? popGroup(a2[0], a2[1]) : []; oHover = g.length >= 2 ? g : null; popStats(); }
+});
+ocv.addEventListener('contextmenu', e => e.preventDefault());
+$('oRestart').addEventListener('click', popNew);
+$('oNew').addEventListener('click', popNew);
+
+function updatePop(dt) {
+  const s = dt / 1000, v = 1300 * s;
+  PO.cols.forEach((col, c) => col.forEach((cell, i) => {
+    const tx = oSlotX(c), ty = oSlotY(i);
+    cell.vx += Math.max(-v, Math.min(v, tx - cell.vx));
+    cell.vy += Math.max(-v, Math.min(v, ty - cell.vy));
+  }));
+}
+function drawPop(now) {
+  const c = octx;
+  c.clearRect(0, 0, OW, OH);
+  c.fillStyle = PWELL; rrect(c, OX - 8, OY - 8, OC * OS + 16, OR * OS + 16, 10);
+  c.fillStyle = PEMPTY;
+  for (let x = 0; x < OC; x++) for (let y = 0; y < OR; y++) rrect(c, OX + x * OS + 3, OY + y * OS + 3, OS - 6, OS - 6, 4);
+  c.save(); c.beginPath(); c.rect(OX - 8, OY - 8, OC * OS + 16, OR * OS + 16); c.clip();
+  const hov = new Set((oHover || []).map(([x, y]) => PO.cols[x] && PO.cols[x][y] && PO.cols[x][y].id));
+  for (const col of PO.cols) for (const cell of col) {
+    block(c, cell.vx, cell.vy, OS, cell.color);
+    if (hov.has(cell.id)) { c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(cell.vx + 1, cell.vy + 1, OS - 2, OS - 2); }
+  }
+  c.restore();
+  PO.fx = PO.fx.filter(f => now - f.t < 280);
+  for (const f of PO.fx) {
+    const q = Math.max(0, (now - f.t) / 280), s = OS * (1 - q);
+    block(c, f.x + (OS - s) / 2, f.y + (OS - s) / 2, s, q < .2 ? '#ffffff' : f.color, 1 - q * .7);
+  }
+  PO.texts = PO.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+  for (const t of PO.texts) {
+    const q = (now - t.t) / 900; if (q < 0) continue;
+    c.globalAlpha = 1 - q * q;
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, t.x, t.y - 30 * q);
+    c.fillStyle = tok('--ink', '#ffffff'); c.fillText(t.text, t.x, t.y - 30 * q);
+  }
+  c.globalAlpha = 1;
+}
+popNew();
+
+// ================= BRICKSLIDE =================
+const LC = 8, LR = 10, LS = 40, LX = 20, LY = 40, LW = 360, LH = 480;
+const LEN_COLOR = { 1: '#56cfe1', 2: '#6ccf86', 3: '#f4cc4a', 4: '#ef6670' };
+const lcv = $('sldCv'), lctx = lcv.getContext('2d');
+setupHiDPI(lcv, LW, LH, lctx);
+let lBest = load('brickslide-best');
+let SL = null, lid = 0, ldrag = null;
+
+function sldOcc() {
+  const g = Array.from({ length: LR }, () => Array(LC).fill(null));
+  for (const b of SL.bars) if (b.r >= 0 && b.r < LR) for (let k = 0; k < b.len; k++) g[b.r][b.c + k] = b;
+  return g;
+}
+function sldGravity() {
+  let moved = true;
+  while (moved) {
+    moved = false;
+    const g = sldOcc();
+    for (const b of [...SL.bars].sort((a, z) => z.r - a.r)) {
+      if (b.r + 1 >= LR) continue;
+      let ok = true;
+      for (let k = 0; k < b.len; k++) if (g[b.r + 1][b.c + k]) { ok = false; break; }
+      if (ok) {
+        for (let k = 0; k < b.len; k++) { g[b.r][b.c + k] = null; g[b.r + 1][b.c + k] = b; }
+        b.r++; moved = true;
+      }
+    }
+  }
+}
+function sldGenRow(r, animate) {
+  const row = [];
+  let c = 0, filled = 0;
+  while (c < LC) {
+    if (Math.random() < .3) { c++; continue; }
+    const len = 1 + Math.floor(Math.random() * Math.min(4, LC - c));
+    row.push({ id: lid++, r, c, len, vx: c, vy: animate ? r + 1 : r });
+    c += len; filled += len;
+  }
+  if (filled >= LC) { const last = row.pop(); filled -= last.len; }
+  if (!row.length) row.push({ id: lid++, r, c: 0, len: 2, vx: 0, vy: animate ? r + 1 : r });
+  SL.bars.push(...row);
+}
+function sldRise(animate) {
+  for (const b of SL.bars) b.r--;
+  sldGenRow(LR - 1, animate);
+}
+function sldNew() {
+  SL = { bars: [], score: 0, lines: 0, phase: 'idle', rise: false, chain: 0, clearT: 0, mode: 'play', texts: [] };
+  for (let k = 0; k < 4; k++) sldRise(false);
+  sldGravity();
+  for (const b of SL.bars) { b.vx = b.c; b.vy = b.r - LR; }
+  SL.phase = 'anim';
+  ldrag = null; $('lOverlay').hidden = true; sldStats();
+}
+function sldFullRows() {
+  const g = sldOcc(), rows = [];
+  for (let r = 0; r < LR; r++) if (g[r].every(Boolean)) rows.push(r);
+  return rows;
+}
+function sldCanMove() {
+  const g = sldOcc();
+  return SL.bars.some(b => (b.c > 0 && !g[b.r][b.c - 1]) || (b.c + b.len < LC && !g[b.r][b.c + b.len]));
+}
+function sldCheck() {
+  const rows = sldFullRows();
+  if (rows.length) {
+    SL.chain++;
+    for (const b of SL.bars) if (rows.includes(b.r)) b.clearing = true;
+    const pts = rows.length * 100 * SL.chain;
+    SL.score += pts; SL.lines += rows.length;
+    SL.texts.push({ text: SL.chain > 1 ? `연쇄 ×${SL.chain} +${fmt(pts)}` : `+${fmt(pts)}`, y: LY + rows[0] * LS + LS / 2, t: performance.now() });
+    sfx('clear', rows.length + SL.chain - 1);
+    SL.phase = 'clearing'; SL.clearT = 0; sldStats();
+    return;
+  }
+  if (SL.rise) {
+    SL.rise = false; sldRise(true);
+    if (SL.bars.some(b => b.r < 0)) { sldOver(); return; }
+    sldGravity();   // bricks above the new row's gaps fall in (and may complete rows)
+    SL.phase = 'anim'; return;
+  }
+  SL.phase = 'idle';
+  if (!sldCanMove()) { SL.rise = true; SL.phase = 'check'; }
+}
+function sldOver() {
+  SL.mode = 'over'; sfx('over');
+  const rec = SL.score > lBest;
+  if (rec) { lBest = SL.score; save('brickslide-best', lBest); }
+  $('lOvText').textContent = `벽돌이 맨 위를 넘었어요. 지운 줄 ${SL.lines}개.` + (rec ? ' 새 최고 기록입니다.' : '');
+  $('lOvScore').textContent = fmt(SL.score);
+  sldStats();
+  setTimeout(() => { if (SL.mode === 'over') $('lOverlay').hidden = false; }, 700);
+}
+function sldStats() { setText('lScore', SL.score); setText('lLines', SL.lines); setText('lBest', Math.max(lBest, SL.score)); }
+$('lRestart').addEventListener('click', sldNew);
+
+function updateSld(dt) {
+  const s = dt / 1000;
+  for (const b of SL.bars) {
+    const vy = 18 * s;
+    b.vy += Math.max(-vy, Math.min(vy, b.r - b.vy));
+    if (!ldrag || ldrag.b !== b) { const vx = 22 * s; b.vx += Math.max(-vx, Math.min(vx, b.c - b.vx)); }
+  }
+  if (SL.mode !== 'play') return;
+  if (SL.phase === 'anim') {
+    if (SL.bars.every(b => Math.abs(b.vy - b.r) < .001 && (ldrag && ldrag.b === b || Math.abs(b.vx - b.c) < .001))) SL.phase = 'check';
+  } else if (SL.phase === 'check') sldCheck();
+  else if (SL.phase === 'clearing') {
+    SL.clearT += dt;
+    if (SL.clearT >= 240) { SL.bars = SL.bars.filter(b => !b.clearing); sldGravity(); SL.phase = 'anim'; }
+  }
+}
+function sldLocal(e) {
+  const r = lcv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * LW / r.width, y: (e.clientY - r.top) * LH / r.height };
+}
+lcv.addEventListener('pointerdown', e => {
+  if (SL.mode !== 'play' || SL.phase !== 'idle' || ldrag) return;
+  const p = sldLocal(e), col = Math.floor((p.x - LX) / LS), row = Math.floor((p.y - LY) / LS);
+  const b = SL.bars.find(z => z.r === row && col >= z.c && col < z.c + z.len);
+  if (!b) return;
+  e.preventDefault();
+  try { lcv.setPointerCapture(e.pointerId); } catch (_) {}
+  const g = sldOcc();
+  let minC = b.c; while (minC > 0 && !g[b.r][minC - 1]) minC--;
+  let maxC = b.c; while (maxC + b.len < LC && !g[b.r][maxC + b.len]) maxC++;
+  ldrag = { b, id: e.pointerId, startX: p.x, origC: b.c, minC, maxC };
+  lcv.style.cursor = 'grabbing';
+});
+lcv.addEventListener('pointermove', e => {
+  if (!ldrag || e.pointerId !== ldrag.id) return;
+  const p = sldLocal(e);
+  ldrag.b.vx = Math.max(ldrag.minC, Math.min(ldrag.maxC, ldrag.origC + (p.x - ldrag.startX) / LS));
+});
+function sldRelease(e, cancel) {
+  if (!ldrag || (e && e.pointerId !== ldrag.id)) return;
+  const d = ldrag; ldrag = null; lcv.style.cursor = '';
+  const nc = cancel ? d.origC : Math.round(d.b.vx);
+  if (nc !== d.origC) {
+    d.b.c = nc; sfx('place');
+    SL.rise = true; SL.chain = 0;
+    sldGravity(); SL.phase = 'anim';
+  }
+}
+lcv.addEventListener('pointerup', e => sldRelease(e, false));
+lcv.addEventListener('pointercancel', e => sldRelease(e, true));
+lcv.addEventListener('contextmenu', e => e.preventDefault());
+
+function drawSld(now) {
+  const c = lctx;
+  c.clearRect(0, 0, LW, LH);
+  c.fillStyle = PWELL; rrect(c, LX - 8, LY - 8, LC * LS + 16, LR * LS + 16, 10);
+  c.fillStyle = PEMPTY;
+  for (let x = 0; x < LC; x++) for (let y = 0; y < LR; y++) rrect(c, LX + x * LS + 3, LY + y * LS + 3, LS - 6, LS - 6, 5);
+  // top row warning when bricks sit there
+  if (SL.bars.some(b => b.r === 0)) {
+    c.fillStyle = `rgba(239,102,112,${.18 + .12 * Math.sin(now / 160)})`;
+    c.fillRect(LX, LY, LC * LS, LS);
+  }
+  c.save(); c.beginPath(); c.rect(LX - 8, LY - 8, LC * LS + 16, LR * LS + 16); c.clip();
+  if (ldrag) {
+    c.fillStyle = 'rgba(255,255,255,.14)';
+    rrect(c, LX + ldrag.minC * LS + 2, LY + ldrag.b.r * LS + 2, (ldrag.maxC - ldrag.minC + ldrag.b.len) * LS - 4, LS - 4, 6);
+  }
+  const flash = Math.floor(now / 60) % 2 === 0;
+  for (const b of SL.bars) {
+    const x = LX + b.vx * LS, y = LY + b.vy * LS;
+    const color = b.clearing && flash ? '#ffffff' : LEN_COLOR[b.len];
+    bevelRect(c, x + 2, y + 2, b.len * LS - 4, LS - 4, color, ldrag && ldrag.b === b ? .9 : 1);
+    c.fillStyle = 'rgba(0,0,0,.18)';
+    for (let k = 1; k < b.len; k++) c.fillRect(x + k * LS - 1, y + 8, 2, LS - 16);
+  }
+  c.restore();
+  SL.texts = SL.texts.filter(t => now - t.t < 900);
+  c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '22px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+  for (const t of SL.texts) {
+    const q = (now - t.t) / 900;
+    c.globalAlpha = 1 - q * q;
+    c.lineWidth = 5; c.strokeStyle = PWELL; c.strokeText(t.text, LW / 2, t.y - 30 * q);
+    c.fillStyle = tok('--ink', '#ffffff'); c.fillText(t.text, LW / 2, t.y - 30 * q);
+  }
+  c.globalAlpha = 1;
+  c.font = '600 12px "IBM Plex Sans KR", system-ui, sans-serif'; c.fillStyle = tok('--muted', '#9b93b5');
+  c.fillText(SL.phase === 'idle' && SL.mode === 'play' ? '벽돌을 좌우로 끌어 옮기세요' : '', LW / 2, LY + LR * LS + 22);
+}
+sldNew();
+
+// menu art for the two new games
+function artPop() {
+  const a = $('artPop'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  const map = { r: POP_COLORS[0], y: POP_COLORS[1], b: POP_COLORS[2], g: POP_COLORS[3] };
+  ['.......', '..b....', '.bby.g.', 'rbyyggr', 'rryggbr', 'yrrbbbr', 'yybbgrr'].forEach((row, r) => [...row].forEach((ch, cc) => {
+    const px = 14 + cc * 16, py = 14 + r * 16;
+    if (ch === '.') { x.fillStyle = PEMPTY; x.fillRect(px + 1, py + 1, 14, 14); } else block(x, px, py, 16, map[ch]);
+  }));
+}
+function artSld() {
+  const a = $('artSld'), x = a.getContext('2d'); setupHiDPI(a, 140, 140, x);
+  for (let r = 0; r < 7; r++) for (let cc = 0; cc < 7; cc++) { x.fillStyle = PEMPTY; x.fillRect(14 + cc * 16 + 1, 14 + r * 16 + 1, 14, 14); }
+  [[6, 0, 3], [6, 4, 3], [5, 1, 2], [5, 3, 4], [4, 0, 1], [4, 2, 3], [3, 1, 2], [3, 5, 2], [1, 3, 2]].forEach(([r, cc, len]) =>
+    bevelRect(x, 14 + cc * 16 + 1, 14 + r * 16 + 1, len * 16 - 2, 14, LEN_COLOR[len]));
+}
+artPop(); artSld();
+
 // ================= settings: theme + volume =================
 let settings = { skin: 'dark', vol: 70 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
@@ -1327,7 +1742,7 @@ function refreshTheme() {
   WELL = tok('--well', '#0f0d17'); GRID = tok('--line', '#302b44'); EMPTY = tok('--cell', '#1d1a2a');
   PWELL = tok('--pack-well', '#363162'); PEMPTY = tok('--pack-cell', '#4a437c');
   BFIELD = tok('--brk-field', '#27315c');
-  artFP(); artBrk(); artStk();
+  artFP(); artBrk(); artStk(); artPop(); artSld();
   const m = document.querySelector('meta[name="theme-color"]');
   if (m) m.setAttribute('content', tok('--bg', '#15131e'));
 }
@@ -1429,6 +1844,8 @@ function frame(t) {
   else if (current === 'pack') drawPack(t);
   else if (current === 'brk') { updateBrk(dt); drawBrk(t); }
   else if (current === 'stk') { updateStk(dt); drawStk(t); }
+  else if (current === 'pop') { updatePop(dt); drawPop(t); }
+  else if (current === 'sld') { updateSld(dt); drawSld(t); }
   requestAnimationFrame(frame);
 }
 function boot(data) {
