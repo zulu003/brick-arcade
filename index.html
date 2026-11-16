@@ -17,7 +17,8 @@
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body{margin:0;font-size:14px;overscroll-behavior:none}
 [hidden]{display:none!important}
-</style><style>
+</style>
+<style>
 /* Layout: an arcade cabinet with a title screen (two game cards) and one screen per game; single dark look on purpose */
 :root{
   --bg:#15131e; --panel:#201d2d; --well:#0f0d17; --cell:#1d1a2a; --line:#302b44;
@@ -167,6 +168,13 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .vol-row input{flex:1;min-width:0;accent-color:var(--accent)}
 .vol-row b{font-family:var(--mono);font-weight:500;min-width:3ch;text-align:right;font-variant-numeric:tabular-nums}
 .note{margin:0;color:var(--muted);font-size:12px}
+.seg.two .seg-row{grid-template-columns:repeat(2,1fr)}
+.seg.two .note{margin-top:8px}
+.seg input:disabled+span{opacity:.45}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:40;display:flex;align-items:center;gap:10px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:8px 8px 8px 14px;box-shadow:0 8px 28px rgba(0,0,0,.3);font-weight:600;font-size:14px;width:max-content;max-width:calc(100vw - 32px)}
+.toast .btn{padding:8px 12px}
+.toast-x{background:transparent;border:0;color:var(--muted);font-size:16px;cursor:pointer;padding:6px 8px;border-radius:6px}
+.toast-x:focus-visible{outline:2px solid var(--ink)}
 
 @media (hover:none),(pointer:coarse),(max-width:640px){ .pad{display:grid} .keys-panel{display:none} }
 @media (max-width:640px){
@@ -397,6 +405,13 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
     <p class="hint">벽돌을 좌우로 끌어서 옮기면 떨어져서 줄을 채워요. 꽉 찬 줄은 지워지고, 한 번 옮길 때마다 아래에서 새 줄이 올라와요.</p>
   </section>
 
+  <!-- ============ UPDATE NOTICE (installed app only) ============ -->
+  <div class="toast" id="updToast" hidden role="status">
+    <span>새 버전이 있어요</span>
+    <button class="btn" id="updBtn" type="button">새로고침</button>
+    <button class="toast-x" id="updLater" type="button" aria-label="나중에">✕</button>
+  </div>
+
   <!-- ============ SETTINGS ============ -->
   <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">
     <div class="sheet-card">
@@ -414,6 +429,14 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         <div class="vol-row"><input type="range" id="volRange" min="0" max="100" step="5" value="70"><b id="volVal">70</b></div>
         <p class="note">0으로 두면 소리가 꺼져요. 시스템은 기기 설정을 따라가요.</p>
       </div>
+      <fieldset class="seg two" id="vibeSet">
+        <legend class="label">진동</legend>
+        <div class="seg-row">
+          <label><input type="radio" name="vibe" value="on" id="vibeOn"><span>켜기</span></label>
+          <label><input type="radio" name="vibe" value="off" id="vibeOff"><span>끄기</span></label>
+        </div>
+        <p class="note" id="vibeNote">줄을 지우거나 게임이 끝날 때 짧게 진동해요.</p>
+      </fieldset>
       <button class="btn" id="closeSettings" type="button">닫기</button>
     </div>
   </div>
@@ -432,6 +455,10 @@ let PWELL = tok('--pack-well', '#363162'), PEMPTY = tok('--pack-cell', '#4a437c'
 const fmt = n => n.toLocaleString('ko-KR');
 const load = k => { try { return parseInt(localStorage.getItem(k) || '0', 10) || 0; } catch (e) { return 0; } };
 const save = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+// games in progress (Brickpack, Brickpop, Brickslide) are kept here so closing the app doesn't lose them
+const loadJSON = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const dropKey = k => { try { localStorage.removeItem(k); } catch (e) {} };
 
 function setupHiDPI(c, w, h, x) {
   const d = Math.min(window.devicePixelRatio || 1, 3);
@@ -458,6 +485,7 @@ function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
   if (current === 'fall' && name !== 'fall' && S.mode === 'play') togglePause();
   if (current === 'brk' && name !== 'brk' && B.mode === 'play') brkPause();
+  if (current === 'stk' && name !== 'stk') stkPause();
   for (const k in screens) screens[k].hidden = k !== name;
   current = name;
   document.body.classList.toggle('pack', name === 'pack');
@@ -824,10 +852,24 @@ function deal() {
 }
 function packStart() {
   P = packFresh(); drag = null; deal();
-  $('pOverlay').hidden = true; updatePackStats();
+  $('pOverlay').hidden = true; updatePackStats(); packSave();
+}
+const PACK_SAVE = 'brickpack-save';
+function packSave() {
+  if (P.mode !== 'play') { dropKey(PACK_SAVE); return; }
+  saveJSON(PACK_SAVE, { grid: P.grid, tray: P.tray, score: P.score, combo: P.combo, sinceClear: P.sinceClear });
+}
+// pick up a saved game; false if there is none (or it is unreadable)
+function packResume() {
+  const s = loadJSON(PACK_SAVE);
+  if (!s || !Array.isArray(s.grid) || s.grid.length !== PB || !Array.isArray(s.tray)) return false;
+  P = Object.assign(packFresh(), { grid: s.grid, tray: s.tray, score: +s.score || 0, combo: +s.combo || 0, sinceClear: +s.sinceClear || 0 });
+  drag = null; $('pOverlay').hidden = true; updatePackStats();
+  if (!P.tray.some(t => t && fitsAny(t))) packOver();
+  return true;
 }
 function packOver() {
-  P.mode = 'over'; sfx('over');
+  P.mode = 'over'; sfx('over'); dropKey(PACK_SAVE);
   if (P.score > pBest) { pBest = P.score; save('brickpack-best', pBest); $('pOvText').textContent = '새 최고 기록입니다.'; }
   else $('pOvText').textContent = '더 이상 놓을 자리가 없어요.';
   $('pOvScore').textContent = fmt(P.score);
@@ -876,7 +918,7 @@ function place(i, r, c) {
   sfx(n ? 'clear' : 'place', n + (P.combo >= 2 ? 1 : 0));
   if (P.tray.every(t => !t)) deal();
   updatePackStats();
-  if (!P.tray.some(t => t && fitsAny(t))) packOver();
+  if (!P.tray.some(t => t && fitsAny(t))) packOver(); else packSave();
 }
 function updatePackStats() {
   setText('pScore', P.score);
@@ -1275,8 +1317,11 @@ function stkOver() {
   setTimeout(() => { if (T.mode === 'over') $('tOverlay').hidden = false; }, 700);
 }
 $('tRestart').addEventListener('click', stkStart);
+// paused when the app goes to the background, the screen is left or Settings opens; the next tap resumes (without dropping)
+function stkPause() { if (T.mode === 'play') T.mode = 'pause'; }
 function stkTap() {
   if (T.mode === 'ready') { stkStart(); return; }
+  if (T.mode === 'pause') { T.mode = 'play'; return; }
   if (T.mode !== 'play' || !T.mov) return;
   const top = T.stack[T.stack.length - 1], m = T.mov, lvl = T.stack.length;
   const left = Math.max(m.x, top.x), right = Math.min(m.x + m.w, top.x + top.w), ov = right - left;
@@ -1325,7 +1370,7 @@ function drawStk(now) {
   c.fillStyle = lite ? 'rgba(40,35,80,.18)' : 'rgba(15,13,30,.45)'; c.fillRect(0, GROUND, SW, SH);
   T.stack.forEach((b, i) => bevelRect(c, b.x, blockY(i), b.w, SBH, PALETTE[i % PALETTE.length]));
   for (const d of T.debris) bevelRect(c, d.x, d.y, d.w, SBH, PALETTE[d.i % PALETTE.length], .85);
-  if (T.mov && T.mode === 'play') bevelRect(c, T.mov.x, blockY(T.stack.length), T.mov.w, SBH, PALETTE[T.stack.length % PALETTE.length]);
+  if (T.mov && (T.mode === 'play' || T.mode === 'pause')) bevelRect(c, T.mov.x, blockY(T.stack.length), T.mov.w, SBH, PALETTE[T.stack.length % PALETTE.length]);
   c.restore();
   // score & prompts
   c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -1334,6 +1379,11 @@ function drawStk(now) {
   if (T.mode === 'ready') {
     c.font = '20px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
     c.fillStyle = lite ? '#211c31' : '#ffffff'; c.fillText('탭해서 시작', SW / 2, 200);
+  } else if (T.mode === 'pause') {
+    c.fillStyle = lite ? 'rgba(255,255,255,.55)' : 'rgba(15,13,30,.45)'; c.fillRect(0, 0, SW, SH);
+    c.font = '24px Bungee, "IBM Plex Sans KR", Impact, sans-serif';
+    c.fillStyle = lite ? '#211c31' : '#ffffff'; c.fillText('일시정지', SW / 2, 200);
+    c.font = '600 15px "IBM Plex Sans KR", system-ui, sans-serif'; c.fillText('탭해서 계속', SW / 2, 234);
   }
   if (T.pop) {
     const q = (now - T.pop.t) / 800;
@@ -1373,6 +1423,8 @@ addEventListener('keyup', e => {
 });
 addEventListener('blur', () => { if (current === 'brk' && B.mode === 'play') brkPause(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'brk' && B.mode === 'play') brkPause(); });
+addEventListener('blur', () => { if (current === 'stk') stkPause(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && current === 'stk') stkPause(); });
 
 // menu art
 function artBrk() {
@@ -1417,7 +1469,22 @@ function popNew() {
     PO.cols.push(col);
   }
   PO.next = popRandRow();
+  oHover = null; $('oOverlay').hidden = true; popStats(); popSave();
+}
+const POP_SAVE = 'brickpop-save';
+function popSave() {
+  if (PO.mode !== 'play') { dropKey(POP_SAVE); return; }
+  saveJSON(POP_SAVE, { cols: PO.cols.map(col => col.map(cell => cell.color)), score: PO.score, level: PO.level, rows: PO.rows, movesLeft: PO.movesLeft, next: PO.next });
+}
+function popResume() {
+  const s = loadJSON(POP_SAVE);
+  if (!s || !Array.isArray(s.cols) || !Array.isArray(s.next) || s.next.length !== OC) return false;
+  PO = { cols: [], score: +s.score || 0, mode: 'play', fx: [], texts: [], level: +s.level || 1, rows: +s.rows || 0,
+    movesLeft: +s.movesLeft || 1, next: s.next };
+  PO.cols = s.cols.filter(col => Array.isArray(col) && col.length).slice(0, OC)
+    .map((col, c) => col.map((color, i) => ({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(i) - OH - i * 14 - c * 6 })));
   oHover = null; $('oOverlay').hidden = true; popStats();
+  return true;
 }
 // push the waiting row in at the bottom; returns false if that overflowed the board
 function popRise() {
@@ -1477,10 +1544,10 @@ function popAt(c, i) {
   } else if (PO.movesLeft <= 0) popRise();
   // never leave the player without a move: keep raising rows until a pair exists (or the board overflows)
   while (PO.mode === 'play' && !popHasMoves()) popRise();
-  popStats();
+  popStats(); popSave();
 }
 function popOver() {
-  PO.mode = 'over'; sfx('over');
+  PO.mode = 'over'; sfx('over'); dropKey(POP_SAVE);
   const rec = PO.score > oBest;
   if (rec) { oBest = PO.score; save('brickpop-best', oBest); }
   $('oOvTitle').textContent = '게임 오버';
@@ -1558,7 +1625,7 @@ function drawPop(now) {
   }
   c.globalAlpha = 1;
 }
-popNew();
+if (!popResume()) popNew();
 
 // ================= BRICKSLIDE =================
 const LC = 8, LR = 10, LS = 40, LX = 20, LY = 40, LW = 360, LH = 480;
@@ -1612,7 +1679,21 @@ function sldNew() {
   sldGravity();
   for (const b of SL.bars) { b.vx = b.c; b.vy = b.r - LR; }
   SL.phase = 'anim';
+  ldrag = null; $('lOverlay').hidden = true; sldStats(); dropKey(SLD_SAVE);
+}
+const SLD_SAVE = 'brickslide-save';
+function sldSave() {
+  if (SL.mode !== 'play') { dropKey(SLD_SAVE); return; }
+  saveJSON(SLD_SAVE, { bars: SL.bars.map(b => [b.r, b.c, b.len]), score: SL.score, lines: SL.lines });
+}
+function sldResume() {
+  const s = loadJSON(SLD_SAVE);
+  if (!s || !Array.isArray(s.bars) || !s.bars.length) return false;
+  SL = { bars: [], score: +s.score || 0, lines: +s.lines || 0, phase: 'anim', rise: false, chain: 0, clearT: 0, mode: 'play', texts: [] };
+  for (const [r, c, len] of s.bars) if (r >= 0 && r < LR && c >= 0 && len >= 1 && c + len <= LC) SL.bars.push({ id: lid++, r, c, len, vx: c, vy: r - LR });
+  if (!SL.bars.length) return false;
   ldrag = null; $('lOverlay').hidden = true; sldStats();
+  return true;
 }
 function sldFullRows() {
   const g = sldOcc(), rows = [];
@@ -1643,9 +1724,10 @@ function sldCheck() {
   }
   SL.phase = 'idle';
   if (!sldCanMove()) { SL.rise = true; SL.phase = 'check'; }
+  else sldSave();
 }
 function sldOver() {
-  SL.mode = 'over'; sfx('over');
+  SL.mode = 'over'; sfx('over'); dropKey(SLD_SAVE);
   const rec = SL.score > lBest;
   if (rec) { lBest = SL.score; save('brickslide-best', lBest); }
   $('lOvText').textContent = `벽돌이 맨 위를 넘었어요. 지운 줄 ${SL.lines}개.` + (rec ? ' 새 최고 기록입니다.' : '');
@@ -1745,7 +1827,7 @@ function drawSld(now) {
   c.font = '600 12px "IBM Plex Sans KR", system-ui, sans-serif'; c.fillStyle = tok('--muted', '#9b93b5');
   c.fillText(SL.phase === 'idle' && SL.mode === 'play' ? '벽돌을 좌우로 끌어 옮기세요' : '', LW / 2, LY + LR * LS + 22);
 }
-sldNew();
+if (!sldResume()) sldNew();
 
 // menu art for the two new games
 function artPop() {
@@ -1765,7 +1847,7 @@ function artSld() {
 artPop(); artSld();
 
 // ================= settings: theme + volume =================
-let settings = { skin: 'dark', vol: 70 };
+let settings = { skin: 'dark', vol: 70, vibe: true };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
 const saveSettings = () => { try { localStorage.setItem('brick-settings', JSON.stringify(settings)); } catch (e) {} };
 
@@ -1809,7 +1891,18 @@ function tone(freq, dur, type, vol, when = 0, slideTo = 0) {
   o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
 }
 const ARP = [523, 659, 784, 1046, 1318, 1568];
+// short vibrations on phones that support it (Android; iPhone Safari has no vibration API)
+const canVibe = typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+const VIBE = { drop: 12, lock: 8, place: 8, item: 15, stack: 10, perfect: [12, 40, 12], lose: 70, stage: [20, 60, 20], over: [60, 50, 120] };
+function buzz(name, n) {
+  if (!settings.vibe || !canVibe) return;
+  const ua = navigator.userActivation; if (ua && !ua.hasBeenActive) return;   // browsers block it before the first tap
+  let p = name === 'clear' ? [18 + Math.min(n, 5) * 8] : VIBE[name];
+  if (!p) return;
+  try { navigator.vibrate(p); } catch (e) {}
+}
 function sfx(name, n = 1) {
+  buzz(name, n);
   if (!settings.vol || !actx || actx.state !== 'running') return;
   try {
     switch (name) {
@@ -1840,10 +1933,13 @@ let sheetOpener = null;
 function syncSettingsUI() {
   for (const r of document.querySelectorAll('input[name="skin"]')) r.checked = r.value === settings.skin;
   $('volRange').value = settings.vol; $('volVal').textContent = settings.vol;
+  for (const r of document.querySelectorAll('input[name="vibe"]')) { r.checked = (r.value === 'on') === (settings.vibe && canVibe); r.disabled = !canVibe; }
+  if (!canVibe) $('vibeNote').textContent = '이 기기나 브라우저는 진동을 지원하지 않아요.';
 }
 function openSettings(btn) {
   if (current === 'fall' && S.mode === 'play') togglePause();
   if (current === 'brk' && B.mode === 'play') brkPause();
+  if (current === 'stk') stkPause();
   sheetOpener = btn || null;
   syncSettingsUI(); sheet.hidden = false;
   const on = document.querySelector('input[name="skin"]:checked'); if (on) on.focus();
@@ -1854,6 +1950,10 @@ $('closeSettings').addEventListener('click', closeSettings);
 sheet.addEventListener('pointerdown', e => { if (e.target === sheet) closeSettings(); });
 for (const r of document.querySelectorAll('input[name="skin"]')) r.addEventListener('change', () => {
   if (!r.checked) return; settings.skin = r.value; saveSettings(); applySkin();
+});
+for (const r of document.querySelectorAll('input[name="vibe"]')) r.addEventListener('change', () => {
+  if (!r.checked) return; settings.vibe = r.value === 'on'; saveSettings();
+  if (settings.vibe) buzz('perfect');
 });
 $('volRange').addEventListener('input', e => {
   settings.vol = +e.target.value; $('volVal').textContent = settings.vol; setVol(); saveSettings();
@@ -1866,6 +1966,11 @@ addEventListener('keydown', e => {
   e.stopImmediatePropagation();
 }, true);
 applySkin();
+
+// update notice: the installed app (site/index.html) calls this when a new version has been downloaded
+window.brickUpdateReady = () => { $('updToast').hidden = false; };
+$('updBtn').addEventListener('click', () => location.reload());
+$('updLater').addEventListener('click', () => { $('updToast').hidden = true; });
 
 // ================= loop & boot =================
 let last = 0;
@@ -1883,7 +1988,7 @@ function boot(data) {
   S = fresh();
   if (data && data.S && data.S.board) { Object.assign(S, data.S); if (S.mode === 'play') S.mode = 'pause'; }
   if (data && data.P && data.P.grid) { P = Object.assign(packFresh(), data.P, { fx: [], texts: [] }); updatePackStats(); if (P.mode === 'over') packOver(); }
-  else packStart();
+  else if (!packResume()) packStart();
   showOverlay();
   show(location.hash.slice(1) || 'menu', true);
   requestAnimationFrame(frame);
@@ -1895,7 +2000,18 @@ if (hot && typeof hot.ready === 'function') hot.ready(boot); else boot((hot && h
 </script>
 <script>
 if ('serviceWorker' in navigator) {
-  addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      // a new version finished installing while this page was open -> offer a reload
+      const watch = w => w && w.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) window.brickUpdateReady && window.brickUpdateReady();
+      });
+      watch(reg.installing);
+      reg.addEventListener('updatefound', () => watch(reg.installing));
+      // phones keep the app open for days: check again whenever it comes back to the front
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
+  });
 }
 </script>
 </body>
