@@ -84,6 +84,7 @@ function sldCheck() {
     SL.score += pts; SL.lines += rows.length;
     SL.texts.push({ text: SL.chain > 1 ? `연쇄 ×${SL.chain} +${fmt(pts)}` : `+${fmt(pts)}`, y: LY + rows[0] * LS + LS / 2, t: performance.now() });
     sfx('clear', rows.length + SL.chain - 1);
+    achEv('sld', 'clear', { rows: rows.length, chain: SL.chain, lines: SL.lines });
     SL.phase = 'clearing'; SL.clearT = 0; sldStats();
     return;
   }

@@ -53,7 +53,7 @@
         <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
       </button>
     </div>
-    <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
+    <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" id="goAch">🏆 업적</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
     <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
   </section>
 
@@ -241,6 +241,17 @@
       </div>
     </div>
   </section>
+
+  <!-- ============ ACHIEVEMENTS ============ -->
+  <section class="screen" id="scrAch" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">업적</span></span></div>
+    <p class="ach-sum" id="achSum"></p>
+    <p class="note ach-legend">★ 처음 해 볼 만한 것 · ★★ 연습이 필요한 것 · ★★★ 실력과 운이 함께 필요한 것</p>
+    <div class="ach-list" id="achList"></div>
+  </section>
+  <div class="ach-toast" id="achToast" hidden role="status" aria-live="polite">
+    <span class="ach-toast-k">업적 달성</span><span class="ach-toast-s" id="achStars"></span><b id="achName"></b>
+  </div>
 
   <!-- ============ MODE PICKER (games with a stage and an endless mode) ============ -->
   <div class="sheet" id="modeSheet" hidden role="dialog" aria-modal="true" aria-labelledby="modeTitle">

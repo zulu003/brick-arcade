@@ -121,15 +121,18 @@ function finishClear() {
   S.score += LINE_PTS[n] * S.level;
   S.lines += n;
   S.clearing = null;
+  achEv('fall', 'clear', { n, prev: S.lastClear || 0, empty: S.board.every(row => row.every(v => !v)) });
+  S.lastClear = n;
   if (S.gm === 'stage') {
     S.stageLines += n;
     if (S.stageLines >= FALL_GOAL) {
       S.clearBonus = 500 * S.stage; S.score += S.clearBonus;
+      achEv('fall', 'stageclear', { stage: S.stage });
       S.mode = 'clear'; S.cur = null; sfx('stage');
       stageRecSave('fall', S.score, S.stage + 1);
       showOverlay(); fallSave(); return;
     }
-  } else S.level = Math.floor(S.lines / 10) + 1;
+  } else { S.level = Math.floor(S.lines / 10) + 1; achEv('fall', 'score', { score: S.score, level: S.level, stage: false }); }
   spawn(nextType()); S.canHold = true;
   fallSave();
 }

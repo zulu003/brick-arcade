@@ -72,7 +72,7 @@ function rrect(c, x, y, w, h, r) {
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats'), ach: $('scrAch') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
@@ -88,6 +88,7 @@ function show(name, fromHash) {
   document.body.classList.toggle('sld', name === 'sld');
   if (name === 'menu') refreshMenu();
   if (name === 'stats') renderStats();
+  if (name === 'ach') renderAch();
   maybeIntro(name);
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);

@@ -84,6 +84,7 @@ function popStageEnd(now) {
   }
   if (PO.stageScore >= PO.target) {
     PO.mode = 'clear'; PO.clearBonus = bonus; sfx('stage');
+    achEv('pop', 'stageclear', { stage: PO.stage });
     stageRecSave('pop', PO.score, PO.stage + 1);
     popSave();
     setTimeout(() => { if (PO.mode === 'clear') popShowClear(); }, 700);
@@ -102,7 +103,7 @@ function popRise() {
   PO.next.forEach((color, c) => PO.cols[c].unshift({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(-1) }));
   PO.rows++;
   const nl = 1 + Math.floor(PO.rows / POP_ROWS_PER_LEVEL);
-  if (nl > PO.level) { PO.level = nl; PO.texts.push({ text: `레벨 ${nl}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() }); sfx('stage'); }
+  if (nl > PO.level) { PO.level = nl; PO.texts.push({ text: `레벨 ${nl}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() }); sfx('stage'); achEv('pop', 'pop', { n: 0, level: nl, stage: false, empty: false }); }
   PO.movesLeft = riseEvery(PO.level);
   PO.next = popRandRow();
   sfx('lock');
@@ -144,6 +145,7 @@ function popAt(c, i) {
   PO.score += pts; PO.stageScore += pts;
   PO.texts.push({ text: pts ? `+${fmt(pts)}` : '+0', x: sx / g.length + OS / 2, y: sy / g.length + OS / 2, t: now });
   PO.cols = PO.cols.map(col => col.filter(cell => !dead.has(cell.id))).filter(col => col.length);
+  achEv('pop', 'pop', { n: g.length, level: PO.level, stage: PO.gm === 'stage', empty: !popLeft() });
   sfx(g.length >= 6 ? 'clear' : 'place', Math.min(5, Math.floor(g.length / 4)));
   oHover = null;
   if (PO.gm === 'stage') {

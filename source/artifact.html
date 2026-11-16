@@ -7,7 +7,7 @@
 /* Layout: an arcade cabinet with a title screen (two game cards) and one screen per game; single dark look on purpose */
 :root{
   --bg:#15131e; --panel:#201d2d; --well:#0f0d17; --cell:#1d1a2a; --line:#302b44;
-  --ink:#efeaf7; --muted:#9b93b5; --accent:#ffb547; --veil:rgba(15,13,23,.88);
+  --ink:#efeaf7; --muted:#9b93b5; --accent:#ffb547; --accent-ink:#ffb547; --veil:rgba(15,13,23,.88);
   /* Brickpack only: a lighter dusk-violet set so the board reads clearly */
   --pack-bg:#4f4a82; --pack-well:#363162; --pack-cell:#4a437c; --pack-line:#6e67a8; --pack-muted:#d0cbea; --pack-veil:rgba(42,38,80,.9);
   /* Brickbreak & Brickstack: mid-tone blues so the play field never reads as black */
@@ -23,21 +23,21 @@
 :root[data-skin="light"],
 :root[data-skin="system"][data-theme="light"]{
   --bg:#f2f0f7; --panel:#ffffff; --well:#e2deee; --cell:#d6d0e6; --line:#cdc6df;
-  --ink:#211c31; --muted:#655d80; --accent:#d48806; --veil:rgba(242,240,247,.9);
+  --ink:#211c31; --muted:#655d80; --accent:#d48806; --accent-ink:#8f5400; --veil:rgba(242,240,247,.9);
   --pack-bg:#e7e3f6; --pack-well:#c8c1e4; --pack-cell:#ddd7f0; --pack-line:#b5acd6; --pack-muted:#554d74; --pack-veil:rgba(236,233,248,.92);
   --brk-bg:#dde5f6; --brk-field:#c2cfee; --brk-line:#a9b6dc; --brk-muted:#4a5680; --brk-veil:rgba(228,234,250,.92);
   --stk-bg:#dfe3f6; --stk-line:#b0b7de; --stk-muted:#4c537e; --stk-veil:rgba(230,233,250,.92);
-  --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35);
+  --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35); --logo-filter:brightness(.68) saturate(1.4);
   color-scheme:light;
 }
 @media (prefers-color-scheme: light){
   :root[data-skin="system"]:not([data-theme="dark"]){
     --bg:#f2f0f7; --panel:#ffffff; --well:#e2deee; --cell:#d6d0e6; --line:#cdc6df;
-    --ink:#211c31; --muted:#655d80; --accent:#d48806; --veil:rgba(242,240,247,.9);
+    --ink:#211c31; --muted:#655d80; --accent:#d48806; --accent-ink:#8f5400; --veil:rgba(242,240,247,.9);
     --pack-bg:#e7e3f6; --pack-well:#c8c1e4; --pack-cell:#ddd7f0; --pack-line:#b5acd6; --pack-muted:#554d74; --pack-veil:rgba(236,233,248,.92);
     --brk-bg:#dde5f6; --brk-field:#c2cfee; --brk-line:#a9b6dc; --brk-muted:#4a5680; --brk-veil:rgba(228,234,250,.92);
     --stk-bg:#dfe3f6; --stk-line:#b0b7de; --stk-muted:#4c537e; --stk-veil:rgba(230,233,250,.92);
-    --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35);
+    --ball:#2a2550; --is-light:1; --logo-shadow:0 1px 0 rgba(33,28,49,.35); --logo-filter:brightness(.68) saturate(1.4);
     color-scheme:light;
   }
 }
@@ -66,7 +66,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
 .card .meta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:auto;font-size:12px;color:var(--muted)}
 .card .meta b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
-.card .play{color:var(--accent);font-weight:600;font-size:14px}
+.card .play{color:var(--accent-ink);font-weight:600;font-size:14px}
 .menu-foot{color:var(--muted);font-size:12px;margin:0}
 
 /* game screens */
@@ -85,7 +85,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .mini{display:block;width:100%;height:auto}
 .stat{display:flex;flex-direction:column;gap:2px}
 .stat b{font-family:var(--mono);font-weight:500;font-size:20px;font-variant-numeric:tabular-nums;color:var(--ink)}
-.stat.score b{color:var(--accent)}
+.stat.score b{color:var(--accent-ink)}
 .keys{font-size:12px;color:var(--muted);display:grid;grid-template-columns:auto 1fr;gap:4px 8px;margin:0}
 .keys dt{font-family:var(--mono);color:var(--ink);font-size:11px}
 .keys dd{margin:0}
@@ -94,7 +94,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 .overlay{position:absolute;inset:2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;background:var(--veil);border-radius:6px;padding:16px}
 .overlay h2{margin:0;font-family:var(--display);font-weight:400;font-size:26px;color:var(--ink)}
 .overlay p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
-.overlay .big{font-family:var(--mono);font-size:28px;color:var(--accent)}
+.overlay .big{font-family:var(--mono);font-size:28px;color:var(--accent-ink)}
 .overlay .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 .btn{font:600 15px var(--body);color:#1b1608;background:var(--accent);border:0;border-radius:6px;padding:10px 22px;cursor:pointer}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
@@ -108,7 +108,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);-webkit-tap-h
 body.pack,body.pop,body.sld{--bg:var(--pack-bg);--line:var(--pack-line);--muted:var(--pack-muted);--veil:var(--pack-veil)}
 .pstats{display:flex;gap:28px;justify-content:center;align-items:flex-end}
 .pstats .stat{align-items:center}
-.combo{font-family:var(--display);font-size:15px;color:var(--accent);min-width:7ch;text-align:center}
+.combo{font-family:var(--display);font-size:15px;color:var(--accent-ink);min-width:7ch;text-align:center}
 .pwell{position:relative}
 #packCv{display:block;width:min(100%,420px,calc((100vh - 190px) * 360 / 510));aspect-ratio:360/510;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
 .hint{margin:0;color:var(--muted);font-size:12px;text-align:center}
@@ -127,11 +127,11 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 /* brickpop & brickslide */
 #popCv{display:block;width:min(100%,420px,calc((100vh - 220px) * 360 / 440));aspect-ratio:360/440;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer}
 #sldCv{display:block;width:min(100%,400px,calc((100vh - 200px) * 360 / 480));aspect-ratio:360/480;height:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
-.preview{font-family:var(--mono);font-size:14px;color:var(--accent);min-width:9ch;text-align:center}
+.preview{font-family:var(--mono);font-size:14px;color:var(--accent-ink);min-width:9ch;text-align:center}
 .tools{display:flex;gap:8px;justify-content:center}
 
 /* settings */
-.logo{text-shadow:var(--logo-shadow)}
+.logo{text-shadow:var(--logo-shadow);filter:var(--logo-filter,none)}
 .bar-r{display:flex;align-items:center;gap:10px}
 .gear{font:600 16px var(--body);line-height:1;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
 .gear:hover{border-color:var(--muted)}
@@ -157,6 +157,24 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .sheet-card{max-height:100%;overflow:auto}
 .bar-r{gap:6px}
 .menu-tools{gap:8px}
+.ach-sum{margin:0;font-weight:600;font-size:15px}
+.ach-legend{text-align:center}
+.ach-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;width:min(100%,980px)}
+.ach-game{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.ach-game h3{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:17px;display:flex;justify-content:space-between;align-items:baseline}
+.ach-game h3 span{font:500 13px var(--mono);color:var(--muted)}
+.ach{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid var(--line);opacity:.5}
+.ach.got{opacity:1}
+.ach-stars{font-size:13px;letter-spacing:1px;color:var(--muted);white-space:nowrap}
+.ach.got .ach-stars{color:var(--accent-ink)}
+.ach b{font-size:14px}
+.ach p{margin:2px 0 0;font-size:12px;color:var(--muted);line-height:1.4}
+.ach-when{font:500 11px var(--mono);color:var(--muted);white-space:nowrap}
+.ach-toast{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:8px;background:var(--panel);color:var(--ink);border:1px solid var(--accent);border-radius:999px;padding:8px 16px;box-shadow:0 8px 28px rgba(0,0,0,.3);font-size:14px;max-width:calc(100vw - 32px);transition:opacity .25s,transform .25s}
+.ach-toast.out{opacity:0;transform:translate(-50%,-8px)}
+.ach-toast-k{color:var(--muted);font-size:12px;font-weight:600}
+.ach-toast-s{color:var(--accent-ink);letter-spacing:1px}
+@media (prefers-reduced-motion:reduce){ .ach-toast{transition:none} }
 .modes{display:flex;flex-direction:column;gap:10px}
 .mode-btn{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;width:100%;padding:14px 16px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:400 14px var(--body);cursor:pointer}
 .mode-btn:hover{border-color:var(--accent)}
@@ -164,7 +182,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
 .mode-btn b{font-family:var(--display);font-weight:400;font-size:18px}
 .mode-desc{color:var(--ink);line-height:1.45}
 .mode-meta{color:var(--muted);font-size:12px}
-.mode-meta em{font-style:normal;color:var(--accent);font-weight:600}
+.mode-meta em{font-style:normal;color:var(--accent-ink);font-weight:600}
 .intro-list{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px;line-height:1.5}
 .stats-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;width:min(100%,820px)}
 .st-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -244,7 +262,7 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
         <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
       </button>
     </div>
-    <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
+    <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" id="goAch">🏆 업적</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
     <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
   </section>
 
@@ -433,6 +451,17 @@ body.stk{--bg:var(--stk-bg);--line:var(--stk-line);--muted:var(--stk-muted);--ve
     </div>
   </section>
 
+  <!-- ============ ACHIEVEMENTS ============ -->
+  <section class="screen" id="scrAch" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">업적</span></span></div>
+    <p class="ach-sum" id="achSum"></p>
+    <p class="note ach-legend">★ 처음 해 볼 만한 것 · ★★ 연습이 필요한 것 · ★★★ 실력과 운이 함께 필요한 것</p>
+    <div class="ach-list" id="achList"></div>
+  </section>
+  <div class="ach-toast" id="achToast" hidden role="status" aria-live="polite">
+    <span class="ach-toast-k">업적 달성</span><span class="ach-toast-s" id="achStars"></span><b id="achName"></b>
+  </div>
+
   <!-- ============ MODE PICKER (games with a stage and an endless mode) ============ -->
   <div class="sheet" id="modeSheet" hidden role="dialog" aria-modal="true" aria-labelledby="modeTitle">
     <div class="sheet-card">
@@ -575,7 +604,7 @@ function rrect(c, x, y, w, h, r) {
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats'), ach: $('scrAch') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
@@ -591,6 +620,7 @@ function show(name, fromHash) {
   document.body.classList.toggle('sld', name === 'sld');
   if (name === 'menu') refreshMenu();
   if (name === 'stats') renderStats();
+  if (name === 'ach') renderAch();
   maybeIntro(name);
   if (!fromHash && location.hash.slice(1) !== name) location.hash = name;
   window.scrollTo(0, 0);
@@ -759,15 +789,18 @@ function finishClear() {
   S.score += LINE_PTS[n] * S.level;
   S.lines += n;
   S.clearing = null;
+  achEv('fall', 'clear', { n, prev: S.lastClear || 0, empty: S.board.every(row => row.every(v => !v)) });
+  S.lastClear = n;
   if (S.gm === 'stage') {
     S.stageLines += n;
     if (S.stageLines >= FALL_GOAL) {
       S.clearBonus = 500 * S.stage; S.score += S.clearBonus;
+      achEv('fall', 'stageclear', { stage: S.stage });
       S.mode = 'clear'; S.cur = null; sfx('stage');
       stageRecSave('fall', S.score, S.stage + 1);
       showOverlay(); fallSave(); return;
     }
-  } else S.level = Math.floor(S.lines / 10) + 1;
+  } else { S.level = Math.floor(S.lines / 10) + 1; achEv('fall', 'score', { score: S.score, level: S.level, stage: false }); }
   spawn(nextType()); S.canHold = true;
   fallSave();
 }
@@ -1130,8 +1163,10 @@ function place(i, r, c) {
   }
   P.score += gain;
   sfx(n ? 'clear' : 'place', n + (P.combo >= 2 ? 1 : 0));
+  achEv('pack', 'place', { n, combo: n ? P.combo : 0, score: P.score, empty: n > 0 && P.grid.every(row => row.every(v => !v)) });
   if (P.gm === 'stage' && n && !stonesLeft()) {
     P.clearBonus = 200 * P.stage; P.score += P.clearBonus; P.mode = 'clear';
+    achEv('pack', 'stageclear', { stage: P.stage });
     stageRecSave('pack', P.score, P.stage + 1);
     updatePackStats(); packSave(); sfx('stage');
     setTimeout(() => { if (P.mode === 'clear') packShowClear(); }, 650);
@@ -1291,6 +1326,7 @@ const stageNo = () => B.loop * STAGES.length + B.stage + 1;
 const brkSpeed = () => B.gm === 'stage' ? Math.min(540, 300 + B.stage * 14 + B.loop * 60) : Math.min(520, 300 + (B.level - 1) * 14);
 const brkBest = () => B.gm === 'stage' ? stageRec('brk').best : bBest;
 function loadMap() {
+  B.lostInStage = false;
   B.bricks = []; B.items = []; B.fx = []; B.slide = 0;
   STAGES[B.stage].forEach((row, r) => [...row].forEach((ch, c) => {
     if (ch !== '.') B.bricks.push({ x: BOX + c * BRW, y: BOY + r * BRH, hp: ch === 'X' ? Infinity : +ch });
@@ -1311,7 +1347,7 @@ function addRow(animate) {
   }
   B.rows++;
   const nl = 1 + Math.floor(Math.max(0, B.rows - START_ROWS) / ROWS_PER_LEVEL);
-  if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); }
+  if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); achEv('brk', 'level', { level: nl }); }
   B.dropT = dropEvery(B.level);
   if (B.mode === 'play') brkSave();
 }
@@ -1396,6 +1432,7 @@ function hitBrick(k) {
   if (k.hp === Infinity) { sfx('wall'); return; }
   k.hp--; B.score += 10; sfx('brick');
   if (k.hp <= 0) {
+    B.broken = (B.broken || 0) + 1; achEv('brk', 'brick', { broken: B.broken });
     B.score += 20;
     B.fx.push({ x: k.x, y: k.y, t: performance.now() });
     if (Math.random() < .16) {
@@ -1421,6 +1458,7 @@ function applyItem(kind) {
     }
     B.balls.push(...add);
   }
+  achEv('brk', 'item', { balls: B.balls.length });
 }
 function stepBall(b, s) {
   const px = b.x, py = b.y;
@@ -1480,7 +1518,7 @@ function updateBrk(dt) {
   B.bricks = B.bricks.filter(k => k.hp > 0);
   B.balls = B.balls.filter(b => !b.dead);
   if (!B.balls.length) {
-    B.lives--;
+    B.lives--; B.lostInStage = true;
     if (B.lives <= 0) { B.reason = '목숨을 모두 잃었어요.'; brkOver(); return; }
     resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose'); brkSave();
   }
@@ -1492,6 +1530,7 @@ function updateBrk(dt) {
   if (B.gm === 'stage') {
     if (!B.bricks.some(k => k.hp !== Infinity)) {
       B.score += 500 + B.lives * 100; B.items = []; B.msg = 'clear'; B.msgT = 1600; sfx('stage');
+      achEv('brk', 'stageclear', { stage: stageNo(), noLoss: !B.lostInStage });
       stageRecSave('brk', B.score, stageNo() + 1);
     }
   } else if (!B.bricks.length) {
@@ -1622,7 +1661,7 @@ function stkTap() {
   }
   let nx = left, nw = ov;
   if (Math.abs(m.x - top.x) <= 4) {
-    nx = top.x; nw = top.w; T.perfect++;
+    nx = top.x; nw = top.w; T.perfect++; T.perfects = (T.perfects || 0) + 1;
     if (T.perfect >= 3) { const grow = Math.min(10, BASE_W - nw); nx -= grow / 2; nw += grow; }
     T.pop = { text: T.perfect >= 2 ? `퍼펙트 ×${T.perfect}` : '퍼펙트!', t: performance.now() };
     sfx('perfect');
@@ -1633,6 +1672,7 @@ function stkTap() {
   }
   T.stack.push({ x: nx, w: nw });
   T.score = T.stack.length - 1;
+  achEv('stk', 'stack', { height: T.score, run: T.perfect, perfects: T.perfects || 0 });
   spawnMov();
 }
 function updateStk(dt) {
@@ -1821,6 +1861,7 @@ function popStageEnd(now) {
   }
   if (PO.stageScore >= PO.target) {
     PO.mode = 'clear'; PO.clearBonus = bonus; sfx('stage');
+    achEv('pop', 'stageclear', { stage: PO.stage });
     stageRecSave('pop', PO.score, PO.stage + 1);
     popSave();
     setTimeout(() => { if (PO.mode === 'clear') popShowClear(); }, 700);
@@ -1839,7 +1880,7 @@ function popRise() {
   PO.next.forEach((color, c) => PO.cols[c].unshift({ id: oid++, color, vx: oSlotX(c), vy: oSlotY(-1) }));
   PO.rows++;
   const nl = 1 + Math.floor(PO.rows / POP_ROWS_PER_LEVEL);
-  if (nl > PO.level) { PO.level = nl; PO.texts.push({ text: `레벨 ${nl}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() }); sfx('stage'); }
+  if (nl > PO.level) { PO.level = nl; PO.texts.push({ text: `레벨 ${nl}`, x: OW / 2, y: OY + OR * OS / 2, t: performance.now() }); sfx('stage'); achEv('pop', 'pop', { n: 0, level: nl, stage: false, empty: false }); }
   PO.movesLeft = riseEvery(PO.level);
   PO.next = popRandRow();
   sfx('lock');
@@ -1881,6 +1922,7 @@ function popAt(c, i) {
   PO.score += pts; PO.stageScore += pts;
   PO.texts.push({ text: pts ? `+${fmt(pts)}` : '+0', x: sx / g.length + OS / 2, y: sy / g.length + OS / 2, t: now });
   PO.cols = PO.cols.map(col => col.filter(cell => !dead.has(cell.id))).filter(col => col.length);
+  achEv('pop', 'pop', { n: g.length, level: PO.level, stage: PO.gm === 'stage', empty: !popLeft() });
   sfx(g.length >= 6 ? 'clear' : 'place', Math.min(5, Math.floor(g.length / 4)));
   oHover = null;
   if (PO.gm === 'stage') {
@@ -2071,6 +2113,7 @@ function sldCheck() {
     SL.score += pts; SL.lines += rows.length;
     SL.texts.push({ text: SL.chain > 1 ? `연쇄 ×${SL.chain} +${fmt(pts)}` : `+${fmt(pts)}`, y: LY + rows[0] * LS + LS / 2, t: performance.now() });
     sfx('clear', rows.length + SL.chain - 1);
+    achEv('sld', 'clear', { rows: rows.length, chain: SL.chain, lines: SL.lines });
     SL.phase = 'clearing'; SL.clearT = 0; sldStats();
     return;
   }
@@ -2535,6 +2578,132 @@ addEventListener('keydown', e => {
   if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); closeIntro(); }
   e.stopImmediatePropagation();
 }, true);
+// ================= achievements =================
+// Three tiers per game, three achievements per tier:
+//   ★   first steps        ★★  takes practice        ★★★ needs skill and some luck
+// Games report what happened with achEv(game, event, data); each achievement tests one event.
+// Unlocks are kept in localStorage 'brick-ach' as { id: 'YYYY-MM-DD' } (rewards can hang off this later).
+const ACH = [
+  // BRICKFALL
+  { id: 'fall-line', g: 'fall', s: 1, t: '첫 줄', d: '줄을 하나 지워요.', ev: 'clear', ok: x => x.n >= 1 },
+  { id: 'fall-5k', g: 'fall', s: 1, t: '5,000점', d: '무한 모드에서 5,000점을 넘겨요.', ev: 'score', ok: x => !x.stage && x.score >= 5000 },
+  { id: 'fall-st1', g: 'fall', s: 1, t: '스테이지 1 통과', d: '스테이지 모드에서 스테이지 1을 클리어해요.', ev: 'stageclear', ok: x => x.stage >= 1 },
+  { id: 'fall-four', g: 'fall', s: 2, t: '한 번에 4줄', d: '블록 하나로 4줄을 한꺼번에 지워요.', ev: 'clear', ok: x => x.n >= 4 },
+  { id: 'fall-lv10', g: 'fall', s: 2, t: '레벨 10', d: '무한 모드에서 레벨 10에 올라요.', ev: 'score', ok: x => !x.stage && x.level >= 10 },
+  { id: 'fall-st5', g: 'fall', s: 2, t: '스테이지 5 통과', d: '스테이지 모드에서 스테이지 5를 클리어해요.', ev: 'stageclear', ok: x => x.stage >= 5 },
+  { id: 'fall-four2', g: 'fall', s: 3, t: '연속 4줄', d: '4줄 지우기를 두 번 연달아 해요. 사이에 다른 줄을 지우면 안 돼요.', ev: 'clear', ok: x => x.n >= 4 && x.prev >= 4 },
+  { id: 'fall-empty', g: 'fall', s: 3, t: '깨끗한 판', d: '줄을 지운 뒤 판에 블록이 하나도 남지 않게 해요.', ev: 'clear', ok: x => x.empty },
+  { id: 'fall-100k', g: 'fall', s: 3, t: '100,000점', d: '무한 모드에서 100,000점을 넘겨요.', ev: 'score', ok: x => !x.stage && x.score >= 100000 },
+  // BRICKPACK
+  { id: 'pack-line', g: 'pack', s: 1, t: '첫 줄', d: '줄을 하나 지워요.', ev: 'place', ok: x => x.n >= 1 },
+  { id: 'pack-1k', g: 'pack', s: 1, t: '1,000점', d: '한 판에 1,000점을 넘겨요.', ev: 'place', ok: x => x.score >= 1000 },
+  { id: 'pack-st1', g: 'pack', s: 1, t: '스테이지 1 통과', d: '스테이지 모드에서 회색 돌을 모두 지워요.', ev: 'stageclear', ok: x => x.stage >= 1 },
+  { id: 'pack-three', g: 'pack', s: 2, t: '한 번에 3줄', d: '조각 하나로 3줄 이상을 지워요.', ev: 'place', ok: x => x.n >= 3 },
+  { id: 'pack-combo5', g: 'pack', s: 2, t: '콤보 ×5', d: '콤보를 5까지 이어가요.', ev: 'place', ok: x => x.combo >= 5 },
+  { id: 'pack-st5', g: 'pack', s: 2, t: '스테이지 5 통과', d: '스테이지 모드에서 스테이지 5를 클리어해요.', ev: 'stageclear', ok: x => x.stage >= 5 },
+  { id: 'pack-five', g: 'pack', s: 3, t: '한 번에 5줄', d: '조각 하나로 5줄 이상을 지워요.', ev: 'place', ok: x => x.n >= 5 },
+  { id: 'pack-empty', g: 'pack', s: 3, t: '판 비우기', d: '판을 완전히 비워요.', ev: 'place', ok: x => x.empty },
+  { id: 'pack-20k', g: 'pack', s: 3, t: '20,000점', d: '한 판에 20,000점을 넘겨요.', ev: 'place', ok: x => x.score >= 20000 },
+  // BRICKBREAK
+  { id: 'brk-100', g: 'brk', s: 1, t: '벽돌 100개', d: '한 판에 벽돌 100개를 깨요.', ev: 'brick', ok: x => x.broken >= 100 },
+  { id: 'brk-item', g: 'brk', s: 1, t: '첫 아이템', d: '떨어지는 아이템을 받아요.', ev: 'item', ok: () => true },
+  { id: 'brk-st1', g: 'brk', s: 1, t: '스테이지 1 통과', d: '스테이지 모드에서 첫 벽돌 판을 깨요.', ev: 'stageclear', ok: x => x.stage >= 1 },
+  { id: 'brk-lv5', g: 'brk', s: 2, t: '레벨 5', d: '무한 모드에서 레벨 5까지 버텨요.', ev: 'level', ok: x => x.level >= 5 },
+  { id: 'brk-ball3', g: 'brk', s: 2, t: '공 세 개', d: '공 3개 이상을 동시에 띄워요.', ev: 'item', ok: x => x.balls >= 3 },
+  { id: 'brk-clean', g: 'brk', s: 2, t: '실수 없이', d: '스테이지 모드에서 목숨을 잃지 않고 한 스테이지를 클리어해요.', ev: 'stageclear', ok: x => x.noLoss },
+  { id: 'brk-st10', g: 'brk', s: 3, t: '스테이지 10 통과', d: '스테이지 모드에서 벽돌 판 10개를 모두 깨요.', ev: 'stageclear', ok: x => x.stage >= 10 },
+  { id: 'brk-ball7', g: 'brk', s: 3, t: '공 일곱 개', d: '공 7개 이상을 동시에 띄워요.', ev: 'item', ok: x => x.balls >= 7 },
+  { id: 'brk-lv12', g: 'brk', s: 3, t: '레벨 12', d: '무한 모드에서 레벨 12까지 버텨요.', ev: 'level', ok: x => x.level >= 12 },
+  // BRICKSTACK
+  { id: 'stk-10', g: 'stk', s: 1, t: '10층', d: '탑을 10층까지 쌓아요.', ev: 'stack', ok: x => x.height >= 10 },
+  { id: 'stk-perfect', g: 'stk', s: 1, t: '첫 퍼펙트', d: '벽돌을 아래 벽돌과 딱 맞게 놓아요.', ev: 'stack', ok: x => x.run >= 1 },
+  { id: 'stk-20', g: 'stk', s: 1, t: '20층', d: '탑을 20층까지 쌓아요.', ev: 'stack', ok: x => x.height >= 20 },
+  { id: 'stk-40', g: 'stk', s: 2, t: '40층', d: '탑을 40층까지 쌓아요.', ev: 'stack', ok: x => x.height >= 40 },
+  { id: 'stk-run3', g: 'stk', s: 2, t: '퍼펙트 ×3', d: '퍼펙트를 3번 연달아 해서 벽돌을 다시 넓혀요.', ev: 'stack', ok: x => x.run >= 3 },
+  { id: 'stk-p10', g: 'stk', s: 2, t: '퍼펙트 10번', d: '한 판에 퍼펙트를 10번 해요.', ev: 'stack', ok: x => x.perfects >= 10 },
+  { id: 'stk-80', g: 'stk', s: 3, t: '80층', d: '탑을 80층까지 쌓아요.', ev: 'stack', ok: x => x.height >= 80 },
+  { id: 'stk-run10', g: 'stk', s: 3, t: '퍼펙트 ×10', d: '퍼펙트를 10번 연달아 해요.', ev: 'stack', ok: x => x.run >= 10 },
+  { id: 'stk-p30', g: 'stk', s: 3, t: '퍼펙트 30번', d: '한 판에 퍼펙트를 30번 해요.', ev: 'stack', ok: x => x.perfects >= 30 },
+  // BRICKPOP
+  { id: 'pop-10', g: 'pop', s: 1, t: '10개 한 번에', d: '덩어리 하나로 10개 이상을 터뜨려요.', ev: 'pop', ok: x => x.n >= 10 },
+  { id: 'pop-lv3', g: 'pop', s: 1, t: '레벨 3', d: '무한 모드에서 레벨 3에 올라요.', ev: 'pop', ok: x => !x.stage && x.level >= 3 },
+  { id: 'pop-st1', g: 'pop', s: 1, t: '스테이지 1 통과', d: '스테이지 모드에서 첫 목표 점수를 넘겨요.', ev: 'stageclear', ok: x => x.stage >= 1 },
+  { id: 'pop-20', g: 'pop', s: 2, t: '20개 한 번에', d: '덩어리 하나로 20개 이상을 터뜨려요.', ev: 'pop', ok: x => x.n >= 20 },
+  { id: 'pop-lv6', g: 'pop', s: 2, t: '레벨 6', d: '무한 모드에서 레벨 6에 올라요.', ev: 'pop', ok: x => !x.stage && x.level >= 6 },
+  { id: 'pop-st5', g: 'pop', s: 2, t: '스테이지 5 통과', d: '스테이지 모드에서 스테이지 5를 클리어해요.', ev: 'stageclear', ok: x => x.stage >= 5 },
+  { id: 'pop-35', g: 'pop', s: 3, t: '35개 한 번에', d: '덩어리 하나로 35개 이상을 터뜨려요.', ev: 'pop', ok: x => x.n >= 35 },
+  { id: 'pop-empty', g: 'pop', s: 3, t: '판 비우기', d: '스테이지 모드에서 꽉 찬 판을 하나도 남김없이 비워요.', ev: 'pop', ok: x => x.stage && x.empty },
+  { id: 'pop-st8', g: 'pop', s: 3, t: '스테이지 8 통과', d: '스테이지 모드에서 스테이지 8을 클리어해요.', ev: 'stageclear', ok: x => x.stage >= 8 },
+  // BRICKSLIDE
+  { id: 'sld-line', g: 'sld', s: 1, t: '첫 줄', d: '줄을 하나 지워요.', ev: 'clear', ok: x => x.rows >= 1 },
+  { id: 'sld-10', g: 'sld', s: 1, t: '한 판에 10줄', d: '한 판에 줄 10개를 지워요.', ev: 'clear', ok: x => x.lines >= 10 },
+  { id: 'sld-chain2', g: 'sld', s: 1, t: '연쇄 ×2', d: '줄이 지워진 뒤 떨어진 벽돌로 또 줄을 지워요.', ev: 'clear', ok: x => x.chain >= 2 },
+  { id: 'sld-two', g: 'sld', s: 2, t: '한 번에 2줄', d: '한 번에 2줄을 지워요.', ev: 'clear', ok: x => x.rows >= 2 },
+  { id: 'sld-40', g: 'sld', s: 2, t: '한 판에 40줄', d: '한 판에 줄 40개를 지워요.', ev: 'clear', ok: x => x.lines >= 40 },
+  { id: 'sld-chain3', g: 'sld', s: 2, t: '연쇄 ×3', d: '연쇄를 3번 이어가요.', ev: 'clear', ok: x => x.chain >= 3 },
+  { id: 'sld-three', g: 'sld', s: 3, t: '한 번에 3줄', d: '한 번에 3줄 이상을 지워요.', ev: 'clear', ok: x => x.rows >= 3 },
+  { id: 'sld-100', g: 'sld', s: 3, t: '한 판에 100줄', d: '한 판에 줄 100개를 지워요.', ev: 'clear', ok: x => x.lines >= 100 },
+  { id: 'sld-chain5', g: 'sld', s: 3, t: '연쇄 ×5', d: '연쇄를 5번 이어가요.', ev: 'clear', ok: x => x.chain >= 5 },
+];
+const ACH_KEY = 'brick-ach';
+const achGot = () => loadJSON(ACH_KEY) || {};
+const achQueue = [];
+let achShowing = false;
+function achEv(g, ev, data) {
+  let got = null;
+  for (const a of ACH) {
+    if (a.g !== g || a.ev !== ev) continue;
+    got = got || achGot();
+    if (got[a.id]) continue;
+    let ok = false; try { ok = !!a.ok(data || {}); } catch (e) {}
+    if (!ok) continue;
+    got[a.id] = today(); saveJSON(ACH_KEY, got);
+    achQueue.push(a);
+  }
+  if (achQueue.length && !achShowing) achNext();
+}
+// unlock notice: one at a time, a couple of seconds each
+function achNext() {
+  const a = achQueue.shift(); if (!a) { achShowing = false; return; }
+  achShowing = true;
+  $('achStars').textContent = '★'.repeat(a.s);
+  $('achName').textContent = a.t;
+  const el = $('achToast'); el.hidden = false; el.classList.remove('out');
+  sfx('perfect');
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.hidden = true; achNext(); }, 250); }, 2400);
+}
+
+const GAME_NAMES = { fall: 'BRICKFALL', pack: 'BRICKPACK', brk: 'BRICKBREAK', stk: 'BRICKSTACK', pop: 'BRICKPOP', sld: 'BRICKSLIDE' };
+function renderAch() {
+  const got = achGot(), list = $('achList');
+  const total = ACH.length, have = ACH.filter(a => got[a.id]).length;
+  const starsHave = ACH.filter(a => got[a.id]).reduce((n, a) => n + a.s, 0), starsAll = ACH.reduce((n, a) => n + a.s, 0);
+  $('achSum').textContent = `${have} / ${total}개 달성 · 별 ${starsHave} / ${starsAll}`;
+  list.textContent = '';
+  for (const g of Object.keys(GAME_NAMES)) {
+    const sec = document.createElement('section'); sec.className = 'ach-game';
+    const mine = ACH.filter(a => a.g === g);
+    const h = document.createElement('h3');
+    h.textContent = GAME_NAMES[g];
+    const c = document.createElement('span'); c.textContent = `${mine.filter(a => got[a.id]).length}/${mine.length}`; h.append(c);
+    sec.append(h);
+    for (const a of mine) {
+      const row = document.createElement('div'); row.className = 'ach' + (got[a.id] ? ' got' : '');
+      const st = document.createElement('span'); st.className = 'ach-stars'; st.setAttribute('aria-label', `별 ${a.s}개`);
+      st.textContent = '★'.repeat(a.s) + '☆'.repeat(3 - a.s);
+      const body = document.createElement('div');
+      const t = document.createElement('b'); t.textContent = a.t;
+      const d = document.createElement('p'); d.textContent = a.d;
+      body.append(t, d);
+      const when = document.createElement('span'); when.className = 'ach-when';
+      when.textContent = got[a.id] ? got[a.id].replace(/-/g, '.') : '잠김';
+      row.append(st, body, when);
+      sec.append(row);
+    }
+    list.append(sec);
+  }
+}
+$('goAch').addEventListener('click', () => show('ach'));
 // ================= loop & boot =================
 let last = 0;
 function frame(t) {

@@ -167,8 +167,10 @@ function place(i, r, c) {
   }
   P.score += gain;
   sfx(n ? 'clear' : 'place', n + (P.combo >= 2 ? 1 : 0));
+  achEv('pack', 'place', { n, combo: n ? P.combo : 0, score: P.score, empty: n > 0 && P.grid.every(row => row.every(v => !v)) });
   if (P.gm === 'stage' && n && !stonesLeft()) {
     P.clearBonus = 200 * P.stage; P.score += P.clearBonus; P.mode = 'clear';
+    achEv('pack', 'stageclear', { stage: P.stage });
     stageRecSave('pack', P.score, P.stage + 1);
     updatePackStats(); packSave(); sfx('stage');
     setTimeout(() => { if (P.mode === 'clear') packShowClear(); }, 650);

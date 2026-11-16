@@ -40,7 +40,7 @@ function stkTap() {
   }
   let nx = left, nw = ov;
   if (Math.abs(m.x - top.x) <= 4) {
-    nx = top.x; nw = top.w; T.perfect++;
+    nx = top.x; nw = top.w; T.perfect++; T.perfects = (T.perfects || 0) + 1;
     if (T.perfect >= 3) { const grow = Math.min(10, BASE_W - nw); nx -= grow / 2; nw += grow; }
     T.pop = { text: T.perfect >= 2 ? `퍼펙트 ×${T.perfect}` : '퍼펙트!', t: performance.now() };
     sfx('perfect');
@@ -51,6 +51,7 @@ function stkTap() {
   }
   T.stack.push({ x: nx, w: nw });
   T.score = T.stack.length - 1;
+  achEv('stk', 'stack', { height: T.score, run: T.perfect, perfects: T.perfects || 0 });
   spawnMov();
 }
 function updateStk(dt) {

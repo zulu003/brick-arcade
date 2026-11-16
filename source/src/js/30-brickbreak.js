@@ -37,6 +37,7 @@ const stageNo = () => B.loop * STAGES.length + B.stage + 1;
 const brkSpeed = () => B.gm === 'stage' ? Math.min(540, 300 + B.stage * 14 + B.loop * 60) : Math.min(520, 300 + (B.level - 1) * 14);
 const brkBest = () => B.gm === 'stage' ? stageRec('brk').best : bBest;
 function loadMap() {
+  B.lostInStage = false;
   B.bricks = []; B.items = []; B.fx = []; B.slide = 0;
   STAGES[B.stage].forEach((row, r) => [...row].forEach((ch, c) => {
     if (ch !== '.') B.bricks.push({ x: BOX + c * BRW, y: BOY + r * BRH, hp: ch === 'X' ? Infinity : +ch });
@@ -57,7 +58,7 @@ function addRow(animate) {
   }
   B.rows++;
   const nl = 1 + Math.floor(Math.max(0, B.rows - START_ROWS) / ROWS_PER_LEVEL);
-  if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); }
+  if (nl > B.level) { B.level = nl; B.pop = { text: `레벨 ${nl}`, t: performance.now() }; sfx('stage'); achEv('brk', 'level', { level: nl }); }
   B.dropT = dropEvery(B.level);
   if (B.mode === 'play') brkSave();
 }
@@ -142,6 +143,7 @@ function hitBrick(k) {
   if (k.hp === Infinity) { sfx('wall'); return; }
   k.hp--; B.score += 10; sfx('brick');
   if (k.hp <= 0) {
+    B.broken = (B.broken || 0) + 1; achEv('brk', 'brick', { broken: B.broken });
     B.score += 20;
     B.fx.push({ x: k.x, y: k.y, t: performance.now() });
     if (Math.random() < .16) {
@@ -167,6 +169,7 @@ function applyItem(kind) {
     }
     B.balls.push(...add);
   }
+  achEv('brk', 'item', { balls: B.balls.length });
 }
 function stepBall(b, s) {
   const px = b.x, py = b.y;
@@ -226,7 +229,7 @@ function updateBrk(dt) {
   B.bricks = B.bricks.filter(k => k.hp > 0);
   B.balls = B.balls.filter(b => !b.dead);
   if (!B.balls.length) {
-    B.lives--;
+    B.lives--; B.lostInStage = true;
     if (B.lives <= 0) { B.reason = '목숨을 모두 잃었어요.'; brkOver(); return; }
     resetBall(); B.msg = 'miss'; B.msgT = 1100; sfx('lose'); brkSave();
   }
@@ -238,6 +241,7 @@ function updateBrk(dt) {
   if (B.gm === 'stage') {
     if (!B.bricks.some(k => k.hp !== Infinity)) {
       B.score += 500 + B.lives * 100; B.items = []; B.msg = 'clear'; B.msgT = 1600; sfx('stage');
+      achEv('brk', 'stageclear', { stage: stageNo(), noLoss: !B.lostInStage });
       stageRecSave('brk', B.score, stageNo() + 1);
     }
   } else if (!B.bricks.length) {
