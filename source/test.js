@@ -36,14 +36,19 @@ async function main() {
   const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check', '--mute-audio',
     '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--window-size=1000,900',
     // GitHub's Linux runners block Chrome's sandbox; the page under test is our own
-    ...(process.env.CI ? ['--no-sandbox'] : []), 'about:blank'], { stdio: 'ignore' });
+    ...(process.env.CI ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  // keep Chrome's own messages, to explain a failed start
+  let chromeLog = '', exited = null;
+  proc.stderr.on('data', d => { chromeLog = (chromeLog + d).slice(-4000); });
+  proc.on('exit', code => { exited = code; });
   let cdp;
   try {
     let port = null;
-    for (let i = 0; i < 100 && !port; i++) {
+    // a cold start on a busy CI machine can take a while
+    for (let i = 0; i < 600 && !port && exited === null; i++) {
       try { port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]; } catch (e) { await sleep(100); }
     }
-    if (!port) throw new Error('Chrome did not start');
+    if (!port) throw new Error(`Chrome did not start (${chrome}${exited !== null ? ', exited with ' + exited : ', no answer in 60s'})\n${chromeLog.trim().split('\n').slice(-12).join('\n')}`);
     const targets = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
     const target = targets.find(t => t.type === 'page');
     cdp = await connect(target.webSocketDebuggerUrl);
