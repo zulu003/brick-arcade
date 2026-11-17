@@ -1600,7 +1600,7 @@ brkOverlay();
 
 function hitBrick(k) {
   if (k.hp === Infinity) { sfx('wall'); return; }
-  k.hp--; B.score += 10; sfx('brick');
+  k.hp--; B.score += 10; sfx('brick'); clearStall();
   if (k.hp <= 0) {
     B.broken = (B.broken || 0) + 1; achEv('brk', 'brick', { broken: B.broken });
     B.score += 20;
@@ -1635,28 +1635,72 @@ function stepBall(b, s) {
   b.x += b.vx * s; b.y += b.vy * s;
   if (b.x < BR) { b.x = BR; b.vx = Math.abs(b.vx); }
   if (b.x > BW - BR) { b.x = BW - BR; b.vx = -Math.abs(b.vx); }
-  if (b.y < BR) { b.y = BR; b.vy = Math.abs(b.vy); }
+  if (b.y < BR) { b.y = BR; b.vy = Math.abs(b.vy); keepAngle(b); }
   // paddle
   if (b.vy > 0 && b.y + BR >= PAD_Y && py + BR <= PAD_Y + 2 && Math.abs(b.x - B.px) <= B.pw / 2 + BR) {
     const off = Math.max(-1, Math.min(1, (b.x - B.px) / (B.pw / 2)));
     const a = off * 1.05, sp = brkSpeed();
-    b.vx = sp * Math.sin(a); b.vy = -sp * Math.cos(a); b.y = PAD_Y - BR; sfx('paddle');
+    b.vx = sp * Math.sin(a); b.vy = -sp * Math.cos(a); b.y = PAD_Y - BR; sfx('paddle'); clearStall();
     return;
   }
   if (b.y > BH + BR) { b.dead = true; return; }
-  // bricks
+  // bricks: bounce off the side the ball actually came from (judged from where it was before this step)
   for (const k of B.bricks) {
-    if (k.hp <= 0) continue;
+    if (k.hp <= 0 || (b.ghost && k.hp === Infinity)) continue;
     const cx = Math.max(k.x, Math.min(b.x, k.x + BRW)), cy = Math.max(k.y, Math.min(b.y, k.y + BRH));
     const dx = b.x - cx, dy = b.y - cy;
     if (dx * dx + dy * dy < BR * BR) {
-      if (px < k.x || px > k.x + BRW) b.vx = -b.vx; else b.vy = -b.vy;
+      const above = py <= k.y, below = py >= k.y + BRH, left = px <= k.x, right = px >= k.x + BRW;
+      if (above || below) b.vy = above ? -Math.abs(b.vy) : Math.abs(b.vy);
+      if (left || right) {
+        // on a corner, only turn sideways if the ball was more beside the brick than above/below it
+        const side = !(above || below) || Math.min(Math.abs(px - k.x), Math.abs(px - k.x - BRW)) > Math.min(Math.abs(py - k.y), Math.abs(py - k.y - BRH));
+        if (side) b.vx = left ? -Math.abs(b.vx) : Math.abs(b.vx);
+      }
+      if (!(above || below || left || right)) {
+        // already overlapping (it can happen after the wall moved): push out the short way
+        const ox = Math.min(b.x - k.x, k.x + BRW - b.x), oy = Math.min(b.y - k.y, k.y + BRH - b.y);
+        if (ox < oy) b.vx = b.x < k.x + BRW / 2 ? -Math.abs(b.vx) : Math.abs(b.vx);
+        else b.vy = b.y < k.y + BRH / 2 ? -Math.abs(b.vy) : Math.abs(b.vy);
+      }
       b.x = px; b.y = py;
+      keepAngle(b);
       hitBrick(k);
       break;
     }
   }
 }
+// never let the ball fly almost flat: it would crawl sideways between walls and grey bricks
+function keepAngle(b) {
+  const sp = Math.hypot(b.vx, b.vy), minVy = sp * .28;
+  if (Math.abs(b.vy) < minVy) {
+    b.vy = (b.vy < 0 ? -1 : 1) * minVy;
+    b.vx = (b.vx < 0 ? -1 : 1) * Math.sqrt(Math.max(0, sp * sp - minVy * minVy));
+  }
+}
+// a ball that has not reached the paddle or a breakable brick for a while is bouncing in a loop
+// (typically caged by grey bricks and the ceiling). After 4s it gets a small tilt every 1.5s; after 7s it turns
+// see-through, passes grey bricks only, and heads down, until it next touches the paddle or a breakable brick.
+const STALL_TILT = 4000, STALL_GHOST = 7000;
+function unstick(dt) {
+  if (!B.balls.some(b => !b.stuck)) { B.stall = 0; B.tiltT = 0; return; }
+  B.stall = (B.stall || 0) + dt;
+  if (B.stall >= STALL_GHOST) {
+    for (const b of B.balls) if (!b.stuck && !b.ghost) { b.ghost = true; b.vy = Math.abs(b.vy); keepAngle(b); }
+    return;
+  }
+  if (B.stall < STALL_TILT) return;
+  B.tiltT = (B.tiltT || 0) - dt;
+  if (B.tiltT > 0) return;
+  B.tiltT = 1500;
+  for (const b of B.balls) {
+    if (b.stuck) continue;
+    const a = (Math.random() < .5 ? -1 : 1) * (.35 + Math.random() * .3), c = Math.cos(a), s = Math.sin(a);
+    const vx = b.vx * c - b.vy * s, vy = b.vx * s + b.vy * c;
+    b.vx = vx; b.vy = vy; keepAngle(b);
+  }
+}
+function clearStall() { B.stall = 0; B.tiltT = 0; for (const b of B.balls) b.ghost = false; }
 function updateBrk(dt) {
   if (B.mode !== 'play') return;
   const s = dt / 1000;
@@ -1680,6 +1724,7 @@ function updateBrk(dt) {
   B.px = Math.max(B.pw / 2, Math.min(BW - B.pw / 2, B.px));
   if (B.wideT > 0) { B.wideT -= dt; if (B.wideT <= 0) B.pw = 64; }
 
+  unstick(dt);
   for (const b of B.balls) {
     if (b.stuck) { b.x = B.px; b.y = PAD_Y - BR - 1; continue; }
     const dist = Math.hypot(b.vx, b.vy) * s, steps = Math.max(1, Math.ceil(dist / 4));
@@ -1745,7 +1790,8 @@ function drawBrk(now) {
   c.fillStyle = 'rgba(255,255,255,.35)'; c.fillRect(B.px - B.pw / 2 + 5, PAD_Y + 2, B.pw - 10, 3);
   // balls
   c.fillStyle = tok('--ball', '#ffffff');
-  for (const b of B.balls) { c.beginPath(); c.arc(b.x, b.y, BR, 0, Math.PI * 2); c.fill(); }
+  for (const b of B.balls) { c.globalAlpha = b.ghost ? .45 + .25 * Math.sin(now / 80) : 1; c.beginPath(); c.arc(b.x, b.y, BR, 0, Math.PI * 2); c.fill(); }
+  c.globalAlpha = 1;
   // messages
   c.textAlign = 'center'; c.textBaseline = 'middle';
   let msg = null;

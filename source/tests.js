@@ -150,6 +150,35 @@ module.exports = [
     eq(t('B.msg'), 'clear', 'clear message');
     t('updateBrk(1700)'); eq(t('stageNo()'), 2, 'stage 2'); eq(t('B.bricks.length'), 30, 'map 2');
     assert(!t('B.rows'), 'no wall rows in stage mode');` },
+  { name: 'brk: the ball never gets trapped by grey bricks', code: `
+    // play every stage map with a paddle that follows the ball; the ball must keep reaching the paddle or a
+    // breakable brick (no endless bouncing between grey bricks and walls), and must never sit inside a brick
+    const report = [];
+    for (let map = 0; map < 10; map++) {
+      let worst = 0, inside = 0;
+      for (let run = 0; run < 3; run++) {
+        t(\`show('brk'); brkMode('stage'); brkStart(); B.stage = \${map}; loadMap(); B.lives = 99; launch()\`);
+        let idle = 0, score = t('B.score');
+        for (let f = 0; f < 60 * 90 && t('B.mode') === 'play'; f++) {
+          const st = t(\`(() => { const b = B.balls.find(x => !x.stuck) || B.balls[0];
+            if (b) B.px = Math.max(B.pw/2, Math.min(360 - B.pw/2, b.x + (Math.random() - .5) * 20));
+            if (B.balls.some(x => x.stuck) && !B.msg) launch();
+            if (B.msg === 'clear') return 'clear';
+            updateBrk(16);
+            const near = B.balls.some(x => x.y > PAD_Y - 30);
+            const inside = B.balls.some(x => B.bricks.some(k => k.hp > 0 && x.x > k.x + 1 && x.x < k.x + BRW - 1 && x.y > k.y + 1 && x.y < k.y + BRH - 1));
+            return [B.score, near, inside, stageNo()]; })()\`);
+          if (st === 'clear' || st[3] !== map + 1) break;
+          if (st[2]) inside++;
+          if (st[0] !== score || st[1]) { idle = 0; score = st[0]; } else idle += 16;
+          worst = Math.max(worst, idle);
+        }
+      }
+      report.push(\`\${map + 1}:\${(worst / 1000).toFixed(1)}s\`);
+      assert(!inside, 'map ' + (map + 1) + ': ball inside a brick for ' + inside + ' frames');
+      assert(worst < 9000, 'map ' + (map + 1) + ': ball bounced ' + (worst / 1000).toFixed(1) + 's without reaching the paddle or a breakable brick');
+    }
+    return 'longest stretch without progress per map: ' + report.join(' ');` },
   { name: 'brk: save keeps unbreakable bricks', code: `
     t("show('brk'); brkMode('stage'); brkStart(); B.stage = 2; loadMap(); brkSave()");
     const n = t('B.bricks.filter(k => k.hp === Infinity).length'); assert(n > 0, 'map has unbreakable');
