@@ -64,6 +64,16 @@ const ACH = [
   { id: 'sld-three', g: 'sld', s: 3, t: '한 번에 3줄', d: '한 번에 3줄 이상을 지워요.', ev: 'clear', ok: x => x.rows >= 3 },
   { id: 'sld-100', g: 'sld', s: 3, t: '한 판에 100줄', d: '한 판에 줄 100개를 지워요.', ev: 'clear', ok: x => x.lines >= 100 },
   { id: 'sld-chain5', g: 'sld', s: 3, t: '연쇄 ×5', d: '연쇄를 5번 이어가요.', ev: 'clear', ok: x => x.chain >= 5 },
+  // BRICKSNAKE
+  { id: 'snk-10', g: 'snk', s: 1, t: '벽돌 10개', d: '한 판에 벽돌 10개를 먹어요.', ev: 'eat', ok: x => x.eaten >= 10 },
+  { id: 'snk-pop', g: 'snk', s: 1, t: '첫 터뜨리기', d: '같은 색 3개를 이어 터뜨려요.', ev: 'pop', ok: x => x.n >= 3 },
+  { id: 'snk-500', g: 'snk', s: 1, t: '500점', d: '한 판에 500점을 넘겨요.', ev: 'eat', ok: x => x.score >= 500 },
+  { id: 'snk-len20', g: 'snk', s: 2, t: '길이 20', d: '뱀의 길이를 20칸까지 늘려요.', ev: 'eat', ok: x => x.length >= 20 },
+  { id: 'snk-chain2', g: 'snk', s: 2, t: '연쇄 ×2', d: '터진 뒤 맞닿은 색으로 한 번 더 터뜨려요.', ev: 'pop', ok: x => x.chain >= 2 },
+  { id: 'snk-50', g: 'snk', s: 2, t: '벽돌 50개', d: '한 판에 벽돌 50개를 먹어요.', ev: 'eat', ok: x => x.eaten >= 50 },
+  { id: 'snk-120', g: 'snk', s: 3, t: '벽돌 120개', d: '한 판에 벽돌 120개를 먹어요. 아주 빨라져요.', ev: 'eat', ok: x => x.eaten >= 120 },
+  { id: 'snk-pop5', g: 'snk', s: 3, t: '5개 한 번에', d: '같은 색 5개 이상을 한 번에 터뜨려요.', ev: 'pop', ok: x => x.n >= 5 },
+  { id: 'snk-chain3', g: 'snk', s: 3, t: '연쇄 ×3', d: '연쇄를 3번 이어가요.', ev: 'pop', ok: x => x.chain >= 3 },
 ];
 const ACH_KEY = 'brick-ach';
 const achGot = () => loadJSON(ACH_KEY) || {};
@@ -93,8 +103,48 @@ function achNext() {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => { el.hidden = true; achNext(); }, 250); }, 2400);
 }
 
-const GAME_NAMES = { fall: 'BRICKFALL', pack: 'BRICKPACK', brk: 'BRICKBREAK', stk: 'BRICKSTACK', pop: 'BRICKPOP', sld: 'BRICKSLIDE' };
+const GAME_NAMES = { fall: 'BRICKFALL', pack: 'BRICKPACK', brk: 'BRICKBREAK', stk: 'BRICKSTACK', pop: 'BRICKPOP', sld: 'BRICKSLIDE', snk: 'BRICKSNAKE' };
+const achStars = (got = achGot()) => ACH.filter(a => got[a.id]).reduce((n, a) => n + a.s, 0);
+const achAll = (got = achGot()) => ACH.every(a => got[a.id]);
+const titleOpen = (ti, stars, all) => ti.all ? all : stars >= ti.stars;
+// the title shown on the menu: the one picked on the achievements screen, else the best one unlocked
+function currentTitle() {
+  const got = achGot(), stars = achStars(got), all = achAll(got);
+  const open = TITLES.filter(ti => titleOpen(ti, stars, all));
+  return open.find(ti => ti.name === settings.title) || open[open.length - 1];
+}
+function showTitle() { const ti = currentTitle(); $('mTitle').textContent = `${ti.name} · ★ ${achStars()}`; }
+function renderRewards() {
+  const got = achGot(), stars = achStars(got), all = achAll(got), box = $('rewards');
+  box.textContent = '';
+  const h = document.createElement('h3'); h.textContent = '보상'; box.append(h);
+  const p = document.createElement('p'); p.className = 'note';
+  p.textContent = '업적으로 모은 별이 많을수록 더 많은 꾸미기가 열려요. 게임 규칙에는 영향이 없어요.'; box.append(p);
+  const group = (label, items, isOn, pick) => {
+    const g = document.createElement('div'); g.className = 'rw-group';
+    const l = document.createElement('span'); l.className = 'label'; l.textContent = label; g.append(l);
+    const row = document.createElement('div'); row.className = 'rw-row';
+    for (const it of items) {
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'rw';
+      const open = it.open;
+      b.disabled = !open; b.setAttribute('aria-pressed', String(open && isOn(it)));
+      if (it.swatch) { const i = document.createElement('i'); for (const col of it.swatch) { const s = document.createElement('b'); s.style.background = col; i.append(s); } b.append(i); }
+      b.append(open ? it.name : `${it.name} · ★${it.need} 필요`);
+      if (open) b.addEventListener('click', () => { pick(it); renderRewards(); });
+      row.append(b);
+    }
+    g.append(row); box.append(g);
+  };
+  group('블록 색', Object.entries(PALETTES).map(([k, v]) => ({ key: k, name: v.name, need: v.stars, open: stars >= v.stars, swatch: [v.cols[4], v.cols[1], v.cols[5], v.cols[3]] })),
+    it => (settings.palette || 'base') === it.key, it => { settings.palette = it.key; saveSettings(); setLook(settings.palette, settings.shape); refreshTheme(); });
+  group('블록 모양', Object.entries(SHAPES_LOOK).map(([k, v]) => ({ key: k, name: v.name, need: v.stars, open: stars >= v.stars })),
+    it => (settings.shape || 'bevel') === it.key, it => { settings.shape = it.key; saveSettings(); setLook(settings.palette, settings.shape); refreshTheme(); });
+  const cur = currentTitle();
+  group('칭호', TITLES.map(ti => ({ key: ti.name, name: ti.name, need: ti.all ? '전부' : ti.stars, open: titleOpen(ti, stars, all) })),
+    it => cur.name === it.key, it => { settings.title = it.key; saveSettings(); });
+}
 function renderAch() {
+  renderRewards();
   const got = achGot(), list = $('achList');
   const total = ACH.length, have = ACH.filter(a => got[a.id]).length;
   const starsHave = ACH.filter(a => got[a.id]).reduce((n, a) => n + a.s, 0), starsAll = ACH.reduce((n, a) => n + a.s, 0);

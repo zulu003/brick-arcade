@@ -52,6 +52,34 @@ function drawMark(c, x, y, s, color) {
   else if (kind === 'x') { c.moveTo(cx - r * .8, cy - r * .8); c.lineTo(cx + r * .8, cy + r * .8); c.moveTo(cx + r * .8, cy - r * .8); c.lineTo(cx - r * .8, cy + r * .8); c.stroke(); }
 }
 
+// ---- cosmetic rewards (unlocked with achievement stars; chosen on the achievements screen)
+// Games keep using the base colours in their state; only drawing goes through paint(), so saves,
+// colour-matching rules and the colour-blind marks are unaffected by the chosen look.
+const BASE7 = ['#56cfe1', '#f4cc4a', '#b47cf2', '#6ccf86', '#ef6670', '#5c86f2', '#f39b4a'];
+const PALETTES = {
+  base:   { name: '기본', stars: 0, cols: BASE7 },
+  pastel: { name: '파스텔', stars: 5, cols: ['#8fe3ef', '#f8e08c', '#cfa9f7', '#9fe0b0', '#f59aa2', '#93aef6', '#f7bd85'] },
+  neon:   { name: '네온', stars: 15, cols: ['#00e5ff', '#ffee00', '#c04dff', '#39ff7a', '#ff3b6b', '#3d6bff', '#ff8a1f'] },
+  jewel:  { name: '보석', stars: 30, cols: ['#1fa5b8', '#e0a800', '#8a3fd1', '#1f9e5a', '#c8284a', '#2b4fc7', '#d86a12'] },
+  retro:  { name: '레트로', stars: 50, cols: ['#6fb8b0', '#d8c060', '#9c7bb0', '#7fa860', '#c86a5a', '#6a80b0', '#c89050'] },
+};
+const SHAPES_LOOK = {
+  bevel: { name: '기본', stars: 0 }, round: { name: '둥근', stars: 10 },
+  pixel: { name: '픽셀', stars: 25 }, glass: { name: '유리', stars: 40 },
+};
+const TITLES = [
+  { stars: 0, name: '새내기' }, { stars: 10, name: '벽돌 견습생' }, { stars: 25, name: '벽돌 수집가' },
+  { stars: 45, name: '벽돌 장인' }, { stars: 70, name: '아케이드 고수' }, { stars: 100, name: '전설의 벽돌공' },
+  { stars: Infinity, name: '완벽주의자', all: true },
+];
+let PAINT = null, LOOK = 'bevel';
+function setLook(palette, shape) {
+  const p = PALETTES[palette] || PALETTES.base;
+  PAINT = palette && palette !== 'base' ? Object.fromEntries(BASE7.map((c, i) => [c, p.cols[i]])) : null;
+  LOOK = SHAPES_LOOK[shape] ? shape : 'bevel';
+}
+const paint = col => (PAINT && PAINT[col]) || col;
+
 function setupHiDPI(c, w, h, x) {
   const d = Math.min(window.devicePixelRatio || 1, 3);
   c.width = w * d; c.height = h * d; x.setTransform(d, 0, 0, d, 0, 0);
@@ -59,26 +87,56 @@ function setupHiDPI(c, w, h, x) {
 function block(c, x, y, s, color, alpha = 1) {
   if (s <= 0) return;
   c.globalAlpha = alpha;
-  c.fillStyle = color; c.fillRect(x + 1, y + 1, s - 2, s - 2);
-  const e = Math.max(2, s * .15);
-  c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
-  c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
-  c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  if (LOOK !== 'bevel') drawLook(c, x, y, s, s, paint(color));
+  else {
+    c.fillStyle = paint(color); c.fillRect(x + 1, y + 1, s - 2, s - 2);
+    const e = Math.max(2, s * .15);
+    c.fillStyle = 'rgba(255,255,255,.30)'; c.fillRect(x + 1, y + 1, s - 2, e);
+    c.fillStyle = 'rgba(255,255,255,.14)'; c.fillRect(x + 1, y + 1, e, s - 2);
+    c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(x + 1, y + s - 1 - e, s - 2, e);
+  }
   if (MARKS) drawMark(c, x, y, s, color);
   c.globalAlpha = 1;
+}
+// the unlockable block shapes; used by block() and bevelRect() (any width/height)
+function drawLook(c, x, y, w, h, col) {
+  const m = Math.min(w, h);
+  if (LOOK === 'round') {
+    const r = Math.max(2, m * .3);
+    c.fillStyle = col; c.beginPath();
+    if (c.roundRect) c.roundRect(x + 1.5, y + 1.5, w - 3, h - 3, r); else c.rect(x + 1.5, y + 1.5, w - 3, h - 3);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,.35)'; c.beginPath();
+    c.ellipse(x + w * .36, y + h * .32, Math.max(1, w * .2), Math.max(1, h * .12), -0.4, 0, Math.PI * 2); c.fill();
+  } else if (LOOK === 'pixel') {
+    const p = Math.max(2, Math.round(m / 8));
+    c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(x + 1, y + 1, w - 2, h - 2);
+    c.fillStyle = col; c.fillRect(x + 1 + p, y + 1 + p, w - 2 - 2 * p, h - 2 - 2 * p);
+    c.fillStyle = 'rgba(255,255,255,.55)'; c.fillRect(x + 1 + p, y + 1 + p, p, p); c.fillRect(x + 1 + 2 * p, y + 1 + p, p, p); c.fillRect(x + 1 + p, y + 1 + 2 * p, p, p);
+    c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + w - 1 - 2 * p, y + h - 1 - 2 * p, p, p);
+  } else if (LOOK === 'glass') {
+    const a = c.globalAlpha;
+    c.globalAlpha = a * .78; c.fillStyle = col; c.fillRect(x + 1, y + 1, w - 2, h - 2);
+    c.globalAlpha = a;
+    const g = c.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(.45, 'rgba(255,255,255,.12)'); g.addColorStop(.5, 'rgba(255,255,255,0)');
+    c.fillStyle = g; c.fillRect(x + 1, y + 1, w - 2, h - 2);
+    c.strokeStyle = 'rgba(255,255,255,.6)'; c.lineWidth = 1; c.strokeRect(x + 1.5, y + 1.5, w - 3, h - 3);
+  }
 }
 function rrect(c, x, y, w, h, r) {
   c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); c.fill();
 }
 
 // ================= navigation =================
-const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats'), ach: $('scrAch') };
+const screens = { menu: $('scrMenu'), fall: $('scrFall'), pack: $('scrPack'), brk: $('scrBrk'), stk: $('scrStk'), pop: $('scrPop'), sld: $('scrSld'), stats: $('scrStats'), ach: $('scrAch'), snk: $('scrSnk') };
 let current = 'menu';
 function show(name, fromHash) {
   if (!screens[name]) name = 'menu';
   if (current === 'fall' && name !== 'fall' && S.mode === 'play') togglePause();
   if (current === 'brk' && name !== 'brk' && B.mode === 'play') brkPause();
   if (current === 'stk' && name !== 'stk') stkPause();
+  if (current === 'snk' && name !== 'snk') snkPause();
   for (const k in screens) screens[k].hidden = k !== name;
   current = name;
   document.body.classList.toggle('pack', name === 'pack');
@@ -86,6 +144,7 @@ function show(name, fromHash) {
   document.body.classList.toggle('stk', name === 'stk');
   document.body.classList.toggle('pop', name === 'pop');
   document.body.classList.toggle('sld', name === 'sld');
+  document.body.classList.toggle('snk', name === 'snk');
   if (name === 'menu') refreshMenu();
   if (name === 'stats') renderStats();
   if (name === 'ach') renderAch();
@@ -103,6 +162,7 @@ $('goBrk').addEventListener('click', () => goGame('brk'));
 $('goStk').addEventListener('click', () => goGame('stk'));
 $('goPop').addEventListener('click', () => goGame('pop'));
 $('goSld').addEventListener('click', () => goGame('sld'));
+$('goSnk').addEventListener('click', () => goGame('snk'));
 
 function refreshMenu() {
   const withStage = (v, g) => { const m = stageRec(g).max; return fmt(v) + (m ? ` · 스테이지 ${m}` : ''); };
@@ -111,6 +171,8 @@ function refreshMenu() {
   $('mBestBrk').textContent = withStage(bBest, 'brk');
   $('mBestStk').textContent = fmt(tBest);
   $('mBestPop').textContent = withStage(oBest, 'pop');
+  $('mBestSnk').textContent = fmt(nBest);
+  showTitle();
   $('mBestSld').textContent = fmt(lBest);
 }
 function drawArt(id, rows, cell) {

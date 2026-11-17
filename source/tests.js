@@ -2,11 +2,11 @@
 // t('expr') evaluates inside the game's scope, so tests can read state (S, P, B, T, PO, SL) and call game functions.
 module.exports = [
   // ---------------- shell ----------------
-  { name: 'shell: menu shows six games and no errors on load', code: `
+  { name: 'shell: menu shows seven games and no errors on load', code: `
     assert(!$('scrMenu').hidden, 'menu visible');
-    eq(document.querySelectorAll('.cards .card').length, 6, 'six cards');` },
+    eq(document.querySelectorAll('.cards .card').length, 7, 'seven cards');` },
   { name: 'shell: every screen opens', code: `
-    for (const s of ['fall','pack','brk','stk','pop','sld','stats','ach','menu']) { t(\`show('\${s}')\`); eq(t('current'), s, 'current screen'); assert(!$('scr' + ({fall:'Fall',pack:'Pack',brk:'Brk',stk:'Stk',pop:'Pop',sld:'Sld',stats:'Stats',ach:'Ach',menu:'Menu'})[s]).hidden, s + ' visible'); }` },
+    for (const s of ['fall','pack','brk','stk','pop','sld','snk','stats','ach','menu']) { t(\`show('\${s}')\`); eq(t('current'), s, 'current screen'); assert(!$('scr' + ({fall:'Fall',pack:'Pack',brk:'Brk',stk:'Stk',pop:'Pop',sld:'Sld',snk:'Snk',stats:'Stats',ach:'Ach',menu:'Menu'})[s]).hidden, s + ' visible'); }` },
   { name: 'shell: first visit shows how-to-play once', code: `
     localStorage.removeItem('brick-intro-seen');
     t("show('pop')"); assert(!$('intro').hidden, 'intro shown');
@@ -14,7 +14,7 @@ module.exports = [
     t("show('menu')"); t("show('pop')"); assert($('intro').hidden, 'not shown again');` },
   { name: 'shell: mode picker for the four two-mode games only', code: `
     for (const g of ['fall','pack','brk','pop']) { t(\`goGame('\${g}')\`); assert(!$('modeSheet').hidden, g + ' picker'); $('modeCancel').click(); eq(t('current'), 'menu', 'stays on menu'); }
-    for (const g of ['stk','sld']) { t("show('menu')"); t(\`goGame('\${g}')\`); assert($('modeSheet').hidden, g + ' no picker'); eq(t('current'), g, 'opened'); }` },
+    for (const g of ['stk','sld','snk']) { t("show('menu')"); t(\`goGame('\${g}')\`); assert($('modeSheet').hidden, g + ' no picker'); eq(t('current'), g, 'opened'); }` },
   { name: 'shell: settings save theme, volume, vibration and marks', code: `
     t("show('menu')"); document.querySelector('[data-settings]').click(); assert(!$('settings').hidden, 'open');
     $('skinLight').click(); eq(document.documentElement.getAttribute('data-skin'), 'light', 'skin');
@@ -211,16 +211,77 @@ module.exports = [
     }
     return moves + ' moves, ' + t('SL.lines') + ' lines, mode ' + t('SL.mode');` },
 
+  // ---------------- BRICKSNAKE ----------------
+  { name: 'snake: steered play keeps a joined body until it crashes', code: `
+    t("show('snk'); snkStart()");
+    // a simple pilot: head for the nearest brick, never step into a wall, stone or the body if another way exists
+    const pilot = \`(() => { const [hx, hy] = N.body[0]; const f = N.food.slice().sort((a, b) => (Math.abs(a.x-hx)+Math.abs(a.y-hy)) - (Math.abs(b.x-hx)+Math.abs(b.y-hy)))[0];
+      const ok = d => { const [dx, dy] = DIRS[d], x = hx + dx, y = hy + dy; return x >= 0 && y >= 0 && x < NC && y < NR && !N.body.slice(0, -1).some(([a, b]) => a === x && b === y) && !N.stones.some(s => s.x === x && s.y === y); };
+      const want = [f && f.x > hx ? 'right' : null, f && f.x < hx ? 'left' : null, f && f.y > hy ? 'down' : null, f && f.y < hy ? 'up' : null].filter(Boolean);
+      const [lx, ly] = DIRS[N.dir]; const back = Object.keys(DIRS).find(d => DIRS[d][0] === -lx && DIRS[d][1] === -ly);
+      const pick = [...want, N.dir, 'up', 'down', 'left', 'right'].find(d => d !== back && ok(d));
+      if (pick && pick !== N.dir) N.queue = [pick]; snkStepOnce(); })()\`;
+    let steps = 0;
+    for (; steps < 4000 && t('N.mode') === 'play'; steps++) {
+      t(pilot);
+      const bad = t(\`(() => { if (N.cols.length !== N.body.length) return 'colour count';
+        for (let i = 1; i < N.body.length; i++) { const [a, b] = N.body[i - 1], [c, d] = N.body[i]; if (Math.abs(a - c) + Math.abs(b - d) !== 1) return 'body not joined at ' + i; }
+        if (N.mode === 'play' && new Set(N.body.map(p => p.join())).size !== N.body.length) return 'overlap';
+        for (let i = 1; i < N.cols.length - 2; i++) if (N.cols[i] && N.cols[i] === N.cols[i + 1] && N.cols[i] === N.cols[i + 2] && i === 1) return 'run of 3 left behind the head';
+        return ''; })()\`);
+      assert(!bad, bad + ' at step ' + steps);
+    }
+    assert(t('N.eaten') >= 5, 'ate ' + t('N.eaten'));
+    return steps + ' steps, ' + t('N.eaten') + ' bricks, length ' + t('N.body.length') + ', score ' + t('N.score') + ', ' + t('N.mode');` },
+  { name: 'snake: three of a colour pop, and the close-up can chain', code: `
+    t("show('snk'); snkStart(); N.stones = []; N.body = [[5,5],[4,5],[3,5],[2,5],[1,5]]; N.cols = [null,'#ef6670','#ef6670','#6ccf86','#5c86f2']; N.dir = 'right'; N.queue = []; N.food = [{x:6,y:5,c:'#ef6670'}]; N.score = 0; snkStepOnce()");
+    eq([t('N.body.length'), t('N.cols.slice(1)'), t('N.score')], [3, ['#6ccf86','#5c86f2'], 100], 'popped three red');
+    t("N.body = [[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],[0,9]]; N.cols = [null,'#ef6670','#ef6670','#5c86f2','#5c86f2','#5c86f2','#6ccf86']; N.dir = 'right'; N.food = [{x:6,y:8,c:'#ef6670'}]; N.score = 0; snkStepOnce()");
+    eq([t('N.body.length'), t('N.cols.slice(1)')], [2, ['#6ccf86']], 'red then blue popped');
+    eq(t('N.score'), 10 + 90 + 180, 'chain scores double');
+    const got = JSON.parse(localStorage.getItem('brick-ach')); assert(got['snk-pop'] && got['snk-chain2'], 'pop achievements');` },
+  { name: 'snake: no turning back, walls end it, pause and resume', code: `
+    t("show('snk'); snkStart(); N.stones = []; N.food = []; snkTurn('left')"); eq(t('N.queue.length'), 0, 'reverse ignored');
+    t("snkTurn('up')"); eq(t('N.queue'), ['up'], 'turn queued');
+    t("snkPause()"); eq(t('N.mode'), 'pause', 'paused'); const s = JSON.parse(localStorage.getItem('bricksnake-save')); eq(s.body.length, 3, 'saved');
+    t("snkResume()"); eq(t('N.mode'), 'pause', 'resumes paused');
+    t("snkTurn('up')"); eq(t('N.mode'), 'play', 'a turn resumes');
+    for (let i = 0; i < 30 && t('N.mode') === 'play'; i++) t('snkStepOnce()');
+    eq(t('N.mode'), 'over', 'hit the wall'); eq(localStorage.getItem('bricksnake-save'), null, 'save dropped');
+    eq(JSON.parse(localStorage.getItem('brick-stats')).snk.n, 1, 'stats');` },
+
+  // ---------------- rewards ----------------
+  { name: 'rewards: locked until enough stars, then change the look', code: `
+    t("show('ach')");
+    eq([...document.querySelectorAll('#rewards .rw:not(:disabled)')].map(b => b.textContent), ['기본', '기본', '새내기'], 'only defaults open');
+    // 3 stars per ★★★, 2 per ★★, 1 per ★: unlock enough for 30 stars
+    const ids = t('ACH').filter(a => a.s === 3).slice(0, 10).map(a => a.id);
+    localStorage.setItem('brick-ach', JSON.stringify(Object.fromEntries(ids.map(i => [i, '2026-11-17']))));
+    t("show('menu')"); assert($('mTitle').textContent.includes('벽돌 수집가') && $('mTitle').textContent.includes('30'), 'title on menu: ' + $('mTitle').textContent);
+    t("show('ach')");
+    const open = [...document.querySelectorAll('#rewards .rw:not(:disabled)')].map(b => b.textContent);
+    for (const n of ['파스텔', '네온', '보석', '둥근', '픽셀', '벽돌 견습생', '벽돌 수집가']) assert(open.includes(n), n + ' open');
+    assert(!open.includes('레트로') && !open.includes('유리'), 'higher ones locked');
+    [...document.querySelectorAll('#rewards .rw')].find(b => b.textContent === '네온').click();
+    eq(t("paint('#ef6670')"), '#ff3b6b', 'neon red');
+    [...document.querySelectorAll('#rewards .rw')].find(b => b.textContent === '픽셀').click();
+    eq(t('LOOK'), 'pixel', 'pixel shape');
+    [...document.querySelectorAll('#rewards .rw')].find(b => b.textContent === '벽돌 견습생').click();
+    const st = JSON.parse(localStorage.getItem('brick-settings')); eq([st.palette, st.shape, st.title], ['neon', 'pixel', '벽돌 견습생'], 'saved');
+    t("show('menu')"); assert($('mTitle').textContent.startsWith('벽돌 견습생'), 'picked title shown');
+    // every shape draws in every game without errors
+    for (const sh of ['bevel', 'round', 'pixel', 'glass']) { t(\`setLook('jewel', '\${sh}'); refreshTheme()\`); for (const g of ['fall','pack','brk','stk','pop','sld','snk']) { t(\`show('\${g}')\`); await sleep(40); } }` },
+
   // ---------------- achievements & data ----------------
   { name: 'achievements: nine per game, three per tier, unique ids', code: `
     const A = t('ACH'); eq(new Set(A.map(a => a.id)).size, A.length, 'unique ids');
-    for (const g of ['fall','pack','brk','stk','pop','sld']) for (const s of [1,2,3]) eq(A.filter(a => a.g === g && a.s === s).length, 3, g + ' tier ' + s);` },
+    for (const g of ['fall','pack','brk','stk','pop','sld','snk']) for (const s of [1,2,3]) eq(A.filter(a => a.g === g && a.s === s).length, 3, g + ' tier ' + s);` },
   { name: 'achievements: unlock once, show a notice, list on the screen', code: `
     t("achEv('pop', 'pop', { n: 12, level: 1, stage: false, empty: false })");
     const got = JSON.parse(localStorage.getItem('brick-ach')); assert(got['pop-10'], 'pop-10 unlocked'); assert(!got['pop-20'], 'pop-20 still locked');
     assert(!$('achToast').hidden, 'notice shown'); eq($('achName').textContent, '10개 한 번에', 'notice text');
     t("achEv('pop', 'pop', { n: 12 })"); eq(t('achQueue.length'), 0, 'no duplicate');
-    t("show('ach')"); eq(document.querySelectorAll('.ach').length, 54, '54 rows'); eq(document.querySelectorAll('.ach.got').length, 1, 'one unlocked');` },
+    t("show('ach')"); eq(document.querySelectorAll('.ach').length, 63, '63 rows'); eq(document.querySelectorAll('.ach.got').length, 1, 'one unlocked');` },
   { name: 'achievements: playing unlocks them (4 lines, perfect stack, item)', code: `
     t("show('fall'); start(); S.board = Array.from({length:20}, (_, r) => r >= 16 ? Array.from({length:10}, (_, c) => c === 0 ? null : 'G') : Array(10).fill(null)); S.cur = null; spawn('I'); rotate(1); for (let i = 0; i < 6; i++) move(-1); hardDrop(); updateFall(300)");
     const got = JSON.parse(localStorage.getItem('brick-ach') || '{}');
@@ -240,8 +301,8 @@ module.exports = [
     for (const k of Object.keys(data)) localStorage.setItem(k, data[k]);
     const after = JSON.stringify(Object.keys(localStorage).filter(k => k.startsWith('brick')).sort().map(k => [k, localStorage.getItem(k)]));
     eq(after, before, 'restored');` },
-  { name: 'data: stats screen shows ten cards', code: `
+  { name: 'data: stats screen shows eleven cards', code: `
     t("recordGame('pop', 120); recordGame('pop', 300); show('stats')");
-    eq(document.querySelectorAll('.st-card').length, 10, 'cards');
+    eq(document.querySelectorAll('.st-card').length, 11, 'cards');
     assert($('statsList').textContent.includes('210'), 'average shown');` },
 ];

@@ -71,7 +71,7 @@ async function main() {
       const t0 = Date.now();
       try {
         await open();
-        await run(`localStorage.clear(); localStorage.setItem('brick-intro-seen', JSON.stringify(['fall','pack','brk','stk','pop','sld']));`);
+        await run(`localStorage.clear(); localStorage.setItem('brick-intro-seen', JSON.stringify(['fall','pack','brk','stk','pop','sld','snk']));`);
         await open();
         const note = await run(t.code);
         if (errors.length) throw new Error('page error: ' + errors.join(' | '));

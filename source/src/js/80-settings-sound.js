@@ -1,14 +1,15 @@
 // ================= settings: theme + volume =================
-let settings = { skin: 'dark', vol: 70, vibe: true, marks: false };
+let settings = { skin: 'dark', vol: 70, vibe: true, marks: false, palette: 'base', shape: 'bevel', title: '' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('brick-settings') || '{}')); } catch (e) {}
 MARKS = !!settings.marks;
+setLook(settings.palette, settings.shape);
 const saveSettings = () => { try { localStorage.setItem('brick-settings', JSON.stringify(settings)); } catch (e) {} };
 
 function refreshTheme() {
   WELL = tok('--well', '#0f0d17'); GRID = tok('--line', '#302b44'); EMPTY = tok('--cell', '#1d1a2a');
   PWELL = tok('--pack-well', '#363162'); PEMPTY = tok('--pack-cell', '#4a437c');
   BFIELD = tok('--brk-field', '#27315c');
-  artFP(); artBrk(); artStk(); artPop(); artSld();
+  artFP(); artBrk(); artStk(); artPop(); artSld(); artSnk();
   const m = document.querySelector('meta[name="theme-color"]');
   if (m) m.setAttribute('content', tok('--bg', '#15131e'));
 }
@@ -94,6 +95,7 @@ function openSettings(btn) {
   if (current === 'fall' && S.mode === 'play') togglePause();
   if (current === 'brk' && B.mode === 'play') brkPause();
   if (current === 'stk') stkPause();
+  if (current === 'snk') snkPause();
   sheetOpener = btn || null;
   syncSettingsUI(); sheet.hidden = false;
   const on = document.querySelector('input[name="skin"]:checked'); if (on) on.focus();

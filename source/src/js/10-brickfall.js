@@ -247,7 +247,7 @@ addEventListener('keydown', e => {
   if (current === 'menu') {
     if (e.key === '1') goGame('fall'); else if (e.key === '2') goGame('pack');
     else if (e.key === '3') goGame('brk'); else if (e.key === '4') goGame('stk');
-    else if (e.key === '5') goGame('pop'); else if (e.key === '6') goGame('sld');
+    else if (e.key === '5') goGame('pop'); else if (e.key === '6') goGame('sld'); else if (e.key === '7') goGame('snk');
     return;
   }
   if (current !== 'fall') return;
@@ -346,7 +346,7 @@ function drawFall() {
   if (S.cur && S.mode !== 'over') {
     const { m, x, type } = S.cur; let gy = S.cur.y;
     while (!collide(m, x, gy + 1)) gy++;
-    ctx.strokeStyle = COLORS[type]; ctx.lineWidth = 2; ctx.globalAlpha = .55;
+    ctx.strokeStyle = paint(COLORS[type]); ctx.lineWidth = 2; ctx.globalAlpha = .55;
     for (let r = 0; r < m.length; r++) for (let c = 0; c < m.length; c++)
       if (m[r][c] && gy + r >= 0) ctx.strokeRect((x + c) * CELL + 3, (gy + r) * CELL + 3, CELL - 6, CELL - 6);
     ctx.globalAlpha = 1;

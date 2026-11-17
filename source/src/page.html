@@ -14,6 +14,7 @@
     <div class="menu-head">
       <h1 class="logo" aria-label="Brick Arcade"><span>B</span><span>R</span><span>I</span><span>C</span><span>K</span><i class="gap"></i><span>A</span><span>R</span><span>C</span><span>A</span><span>D</span><span>E</span></h1>
       <p class="tag">플레이할 게임을 고르세요</p>
+      <p class="title-line" id="mTitle"></p>
     </div>
     <div class="cards">
       <button class="card" type="button" id="goFall">
@@ -52,9 +53,15 @@
         <p>가로 벽돌을 좌우로 밀어 떨어뜨리고 줄을 채워요. 한 번 밀 때마다 아래에서 새 줄이 올라와요.</p>
         <div class="meta"><span>최고 <b id="mBestSld">0</b></span><span class="play">플레이 →</span></div>
       </button>
+      <button class="card" type="button" id="goSnk">
+        <div class="art"><canvas id="artSnk" width="140" height="140"></canvas></div>
+        <h2>BRICKSNAKE</h2>
+        <p>벽돌을 먹으며 길어지는 뱀. 같은 색 3개가 몸에 이어지면 터져서 짧아져요.</p>
+        <div class="meta"><span>최고 <b id="mBestSnk">0</b></span><span class="play">플레이 →</span></div>
+      </button>
     </div>
     <div class="menu-tools"><button class="gear" type="button" id="goStats">📊 기록</button><button class="gear" type="button" id="goAch">🏆 업적</button><button class="gear" type="button" data-settings>⚙ 설정</button></div>
-    <p class="menu-foot">키보드: 1–6을 눌러 바로 시작</p>
+    <p class="menu-foot">키보드: 1–7을 눌러 바로 시작</p>
   </section>
 
   <!-- ============ BRICKFALL ============ -->
@@ -248,6 +255,7 @@
     <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">업적</span></span></div>
     <p class="ach-sum" id="achSum"></p>
     <p class="note ach-legend">★ 처음 해 볼 만한 것 · ★★ 연습이 필요한 것 · ★★★ 실력과 운이 함께 필요한 것</p>
+    <div class="rewards" id="rewards"></div>
     <div class="ach-list" id="achList"></div>
   </section>
   <div class="ach-toast" id="achToast" hidden role="status" aria-live="polite">
@@ -281,6 +289,33 @@
     <button class="btn" id="updBtn" type="button">새로고침</button>
     <button class="toast-x" id="updLater" type="button" aria-label="나중에">✕</button>
   </div>
+
+  <!-- ============ BRICKSNAKE ============ -->
+  <section class="screen" id="scrSnk" hidden>
+    <div class="bar"><button class="back" type="button" data-nav="menu">← 메뉴</button><span class="bar-r"><span class="gname">BRICKSNAKE</span><button class="gear" type="button" data-help aria-label="게임 방법">?</button><button class="gear" type="button" data-settings aria-label="설정">⚙</button></span></div>
+    <div class="hud">
+      <div class="stat score"><span class="label">점수</span><b id="nScore">0</b></div>
+      <div class="stat"><span class="label">길이</span><b id="nLen">3</b></div>
+      <div class="stat"><span class="label">최고</span><b id="nBest">0</b></div>
+    </div>
+    <div class="pwell">
+      <canvas id="snkCv" width="360" height="360" aria-label="Bricksnake 게임 보드"></canvas>
+      <div class="overlay" id="nOverlay" hidden>
+        <h2 id="nOvTitle">BRICKSNAKE</h2>
+        <p id="nOvText"></p>
+        <div class="big" id="nOvScore" hidden>0</div>
+        <div class="row">
+          <button class="btn" id="nOvBtn" type="button">시작</button>
+          <button class="btn ghost" type="button" data-nav="menu">메뉴</button>
+        </div>
+      </div>
+    </div>
+    <div class="npad" id="nPad">
+      <span></span><button type="button" data-dir="up" aria-label="위">↑</button><span></span>
+      <button type="button" data-dir="left" aria-label="왼쪽">←</button><button type="button" data-dir="down" aria-label="아래">↓</button><button type="button" data-dir="right" aria-label="오른쪽">→</button>
+    </div>
+    <p class="hint">방향키·WASD 또는 화면을 밀어서 방향을 바꿔요. 벽돌을 먹으면 그 색이 머리 뒤에 붙고, 같은 색 3개 이상이 이어지면 터져요. 벽·돌·자기 몸에 부딪히면 끝나요. P·Esc 일시정지.</p>
+  </section>
 
   <!-- ============ SETTINGS ============ -->
   <div class="sheet" id="settings" hidden role="dialog" aria-modal="true" aria-labelledby="setTitle">

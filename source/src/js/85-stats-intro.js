@@ -10,6 +10,7 @@ const GAMES = [
   { id: 'pop', name: 'BRICKPOP', best: () => oBest, unit: '' },
   { id: 'pop-stage', name: 'BRICKPOP · 스테이지', best: () => stageRec('pop').best, stage: 'pop', unit: '' },
   { id: 'sld', name: 'BRICKSLIDE', best: () => lBest, unit: '' },
+  { id: 'snk', name: 'BRICKSNAKE', best: () => nBest, unit: '' },
 ];
 const STATS_KEY = 'brick-stats';
 
@@ -120,6 +121,10 @@ const INTRO = {
     '가로줄을 꽉 채우면 지워지고, 연달아 지우면 점수가 커져요.',
     '한 번 옮길 때마다 아래에서 새 줄이 올라와요. 벽돌이 맨 위를 넘으면 끝나요.'],
 };
+INTRO.snk = ['방향키나 WASD, 또는 화면을 밀어서 뱀의 방향을 바꿔요. 휴대폰에서는 아래 화살표 버튼도 쓸 수 있어요.',
+  '벽돌을 먹으면 그 색이 머리 바로 뒤에 붙어요. 같은 색 3개 이상이 이어지면 터지면서 몸이 짧아지고, 많이 이을수록 점수가 커요.',
+  '터진 뒤 맞닿은 색이 또 3개 이상이면 연쇄로 터져요. 먹을수록 빨라지고, 12개마다 회색 돌이 생겨요.',
+  '벽, 돌, 자기 몸에 부딪히면 끝나요.'];
 const INTRO_KEY = 'brick-intro-seen';
 const intro = $('intro');
 let introOpener = null;
@@ -127,6 +132,7 @@ function pauseCurrent() {
   if (current === 'fall' && S.mode === 'play') togglePause();
   if (current === 'brk' && B.mode === 'play') brkPause();
   if (current === 'stk') stkPause();
+  if (current === 'snk') snkPause();
 }
 function openIntro(id, btn) {
   let lines = INTRO[id]; if (!lines) return;

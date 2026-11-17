@@ -8,6 +8,7 @@ function frame(t) {
   else if (current === 'stk') { updateStk(dt); drawStk(t); }
   else if (current === 'pop') { updatePop(dt); drawPop(t); }
   else if (current === 'sld') { updateSld(dt); drawSld(t); }
+  else if (current === 'snk') { updateSnk(dt); drawSnk(t); }
   requestAnimationFrame(frame);
 }
 function boot(data) {
