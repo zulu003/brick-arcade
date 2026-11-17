@@ -2432,7 +2432,8 @@ artPop(); artSld();
 const NC = 18, NR = 18, NS = 20, NX = 0, NY = 0, NW = 360, NH = 360;
 const SNK_COLORS = ['#ef6670', '#f4cc4a', '#5c86f2', '#6ccf86'];
 const SNK_FOOD = 3, SNK_STONE_EVERY = 12, SNK_STONE = '#8a85a6';
-const snkStep = eaten => Math.max(70, 170 - eaten * 2);   // ms per move
+// ms per move: a calm start (about 3.6 moves a second), 2ms faster per brick, never faster than 90ms
+const snkStep = eaten => Math.max(90, 280 - eaten * 2);
 const snCv = $('snkCv'), snCtx = snCv.getContext('2d');
 setupHiDPI(snCv, NW, NH, snCtx);
 let nBest = load('bricksnake-best');
